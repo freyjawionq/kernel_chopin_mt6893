@@ -404,7 +404,7 @@ static int inode_set(struct inode *inode, void *opaque)
 	} else if (search->ino == INCFS_PENDING_READS_INODE) {
 		/* It's an inode for .pending_reads pseudo file. */
 
-		inode->i_ctime = (struct timespec64){};
+		inode->i_ctime = (struct timespec){};
 		inode->i_mtime = inode->i_ctime;
 		inode->i_atime = inode->i_ctime;
 		inode->i_size = 0;
@@ -419,7 +419,7 @@ static int inode_set(struct inode *inode, void *opaque)
 	} else if (search->ino == INCFS_LOG_INODE) {
 		/* It's an inode for .log pseudo file. */
 
-		inode->i_ctime = (struct timespec64){};
+		inode->i_ctime = (struct timespec){};
 		inode->i_mtime = inode->i_ctime;
 		inode->i_atime = inode->i_ctime;
 		inode->i_size = 0;
@@ -471,7 +471,9 @@ static ssize_t pending_reads_read(struct file *f, char __user *buf, size_t len,
 	int new_max_sn = last_known_read_sn;
 	int reads_collected = 0;
 	ssize_t result = 0;
-	int i = 0;
+
+	if (!mi)
+		return -EFAULT;
 
 	if (!incfs_fresh_pending_reads_exist(mi, last_known_read_sn))
 		return 0;
@@ -484,15 +486,11 @@ static ssize_t pending_reads_read(struct file *f, char __user *buf, size_t len,
 		min_t(size_t, PAGE_SIZE / sizeof(*reads_buf), reads_to_collect);
 
 	reads_collected = incfs_collect_pending_reads(
-		mi, last_known_read_sn, reads_buf, reads_to_collect);
+		mi, last_known_read_sn, reads_buf, reads_to_collect, &new_max_sn);
 	if (reads_collected < 0) {
 		result = reads_collected;
 		goto out;
 	}
-
-	for (i = 0; i < reads_collected; i++)
-		if (reads_buf[i].serial_number > new_max_sn)
-			new_max_sn = reads_buf[i].serial_number;
 
 	/*
 	 * Just to make sure that we don't accidentally copy more data
@@ -740,28 +738,7 @@ static int incfs_init_dentry(struct dentry *dentry, struct path *path)
 	return 0;
 }
 
-static struct dentry *incfs_lookup_dentry(struct dentry *parent,
-						const char *name)
-{
-	struct inode *inode;
-	struct dentry *result = NULL;
-
-	if (!parent)
-		return ERR_PTR(-EFAULT);
-
-	inode = d_inode(parent);
-	inode_lock_nested(inode, I_MUTEX_PARENT);
-	result = lookup_one_len(name, parent, strlen(name));
-	inode_unlock(inode);
-
-	if (IS_ERR(result))
-		pr_warn("%s err:%ld\n", __func__, PTR_ERR(result));
-
-	return result;
-}
-
-static struct dentry *open_or_create_index_dir(struct dentry *backing_dir,
-					       bool *created)
+static struct dentry *open_or_create_index_dir(struct dentry *backing_dir)
 {
 	static const char name[] = ".index";
 	struct dentry *index_dentry;
@@ -775,7 +752,6 @@ static struct dentry *open_or_create_index_dir(struct dentry *backing_dir,
 		return index_dentry;
 	} else if (d_really_is_positive(index_dentry)) {
 		/* Index already exists. */
-		*created = false;
 		return index_dentry;
 	}
 
@@ -784,17 +760,15 @@ static struct dentry *open_or_create_index_dir(struct dentry *backing_dir,
 	err = vfs_mkdir(backing_inode, index_dentry, 0777);
 	inode_unlock(backing_inode);
 
-	if (err) {
-		dput(index_dentry);
+	if (err)
 		return ERR_PTR(err);
-	}
 
-	if (!d_really_is_positive(index_dentry)) {
+	if (!d_really_is_positive(index_dentry) ||
+		unlikely(d_unhashed(index_dentry))) {
 		dput(index_dentry);
 		return ERR_PTR(-EINVAL);
 	}
 
-	*created = true;
 	return index_dentry;
 }
 
@@ -806,15 +780,20 @@ static int read_single_page(struct file *f, struct page *page)
 	ssize_t read_result = 0;
 	struct data_file *df = get_incfs_data_file(f);
 	int result = 0;
-	void *page_start = kmap(page);
+	void *page_start;
 	int block_index;
 	int timeout_ms;
 
-	if (!df)
+	if (!df) {
+		SetPageError(page);
+		unlock_page(page);
 		return -EBADF;
+	}
 
+	page_start = kmap(page);
 	offset = page_offset(page);
-	block_index = offset / INCFS_DATA_FILE_BLOCK_SIZE;
+	block_index = (offset + df->df_mapped_offset) /
+		INCFS_DATA_FILE_BLOCK_SIZE;
 	size = df->df_size;
 	timeout_ms = df->df_mount_info->mi_options.read_timeout_ms;
 
@@ -824,6 +803,10 @@ static int read_single_page(struct file *f, struct page *page)
 		};
 
 		tmp.data = (u8 *)__get_free_pages(GFP_NOFS, get_order(tmp.len));
+		if (!tmp.data) {
+			read_result = -ENOMEM;
+			goto err;
+		}
 		bytes_to_read = min_t(loff_t, size - offset, PAGE_SIZE);
 		read_result = incfs_read_data_file_block(
 			range(page_start, bytes_to_read), f, block_index,
@@ -835,6 +818,7 @@ static int read_single_page(struct file *f, struct page *page)
 		read_result = 0;
 	}
 
+err:
 	if (read_result < 0)
 		result = read_result;
 	else if (read_result < PAGE_SIZE)
@@ -848,19 +832,6 @@ static int read_single_page(struct file *f, struct page *page)
 	flush_dcache_page(page);
 	kunmap(page);
 	unlock_page(page);
-	return result;
-}
-
-static char *file_id_to_str(incfs_uuid_t id)
-{
-	char *result = kmalloc(1 + sizeof(id.bytes) * 2, GFP_NOFS);
-	char *end;
-
-	if (!result)
-		return NULL;
-
-	end = bin2hex(result, id.bytes, sizeof(id.bytes));
-	*end = 0;
 	return result;
 }
 
@@ -908,14 +879,14 @@ static int init_new_file(struct mount_info *mi, struct dentry *dentry,
 		.dentry = dentry
 	};
 	new_file = dentry_open(&path, O_RDWR | O_NOATIME | O_LARGEFILE,
-			       current_cred());
+			       mi->mi_owner);
 
 	if (IS_ERR(new_file)) {
 		error = PTR_ERR(new_file);
 		goto out;
 	}
 
-	bfc = incfs_alloc_bfc(mi, new_file);
+	bfc = incfs_alloc_bfc(new_file);
 	fput(new_file);
 	if (IS_ERR(bfc)) {
 		error = PTR_ERR(bfc);
@@ -981,6 +952,54 @@ out:
 	return error;
 }
 
+static int init_new_mapped_file(struct mount_info *mi, struct dentry *dentry,
+			 incfs_uuid_t *uuid, u64 size, u64 offset)
+{
+	struct path path = {};
+	struct file *new_file;
+	int error = 0;
+	struct backing_file_context *bfc = NULL;
+
+	if (!mi || !dentry || !uuid)
+		return -EFAULT;
+
+	/* Resize newly created file to its true size. */
+	path = (struct path) {
+		.mnt = mi->mi_backing_dir_path.mnt,
+		.dentry = dentry
+	};
+	new_file = dentry_open(&path, O_RDWR | O_NOATIME | O_LARGEFILE,
+			       mi->mi_owner);
+
+	if (IS_ERR(new_file)) {
+		error = PTR_ERR(new_file);
+		goto out;
+	}
+
+	bfc = incfs_alloc_bfc(new_file);
+	fput(new_file);
+	if (IS_ERR(bfc)) {
+		error = PTR_ERR(bfc);
+		bfc = NULL;
+		goto out;
+	}
+
+	mutex_lock(&bfc->bc_mutex);
+	error = incfs_write_mapping_fh_to_backing_file(bfc, uuid, size, offset);
+	if (error)
+		goto out;
+
+out:
+	if (bfc) {
+		mutex_unlock(&bfc->bc_mutex);
+		incfs_free_bfc(bfc);
+	}
+
+	if (error)
+		pr_debug("incfs: %s error: %d\n", __func__, error);
+	return error;
+}
+
 static int incfs_link(struct dentry *what, struct dentry *where)
 {
 	struct dentry *parent_dentry = dget_parent(where);
@@ -1036,7 +1055,7 @@ static int dir_relative_path_resolve(
 	if (dir_fd < 0)
 		return dir_fd;
 
-	dir_f = dentry_open(base_path, O_RDONLY | O_NOATIME, current_cred());
+	dir_f = dentry_open(base_path, O_RDONLY | O_NOATIME, mi->mi_owner);
 
 	if (IS_ERR(dir_f)) {
 		error = PTR_ERR(dir_f);
@@ -1269,7 +1288,7 @@ static long ioctl_create_file(struct mount_info *mi,
 	if (error)
 		goto delete_index_file;
 
-	/* Linking a file with it's real name from the requested dir. */
+	/* Linking a file with its real name from the requested dir. */
 	error = incfs_link(index_file_dentry, named_file_dentry);
 
 	if (!error)
@@ -1482,6 +1501,150 @@ static long ioctl_get_filled_blocks(struct file *f, void __user *arg)
 	return error;
 }
 
+static long ioctl_create_mapped_file(struct mount_info *mi, void __user *arg)
+{
+	struct incfs_create_mapped_file_args __user *args_usr_ptr = arg;
+	struct incfs_create_mapped_file_args args = {};
+	char *file_name;
+	int error = 0;
+	struct path parent_dir_path = {};
+	char *source_file_name = NULL;
+	struct dentry *source_file_dentry = NULL;
+	u64 source_file_size;
+	struct dentry *file_dentry = NULL;
+	struct inode *parent_inode;
+	__le64 size_attr_value;
+
+	if (copy_from_user(&args, args_usr_ptr, sizeof(args)) > 0)
+		return -EINVAL;
+
+	file_name = strndup_user(u64_to_user_ptr(args.file_name), PATH_MAX);
+	if (IS_ERR(file_name)) {
+		error = PTR_ERR(file_name);
+		file_name = NULL;
+		goto out;
+	}
+
+	error = validate_name(file_name);
+	if (error)
+		goto out;
+
+	if (args.source_offset % INCFS_DATA_FILE_BLOCK_SIZE) {
+		error = -EINVAL;
+		goto out;
+	}
+
+	/* Validate file mapping is in range */
+	source_file_name = file_id_to_str(args.source_file_id);
+	if (!source_file_name) {
+		pr_warn("Failed to alloc source_file_name\n");
+		error = -ENOMEM;
+		goto out;
+	}
+
+	source_file_dentry = incfs_lookup_dentry(mi->mi_index_dir,
+						       source_file_name);
+	if (!source_file_dentry) {
+		pr_warn("Source file does not exist\n");
+		error = -EINVAL;
+		goto out;
+	}
+	if (IS_ERR(source_file_dentry)) {
+		pr_warn("Error opening source file\n");
+		error = PTR_ERR(source_file_dentry);
+		source_file_dentry = NULL;
+		goto out;
+	}
+	if (!d_really_is_positive(source_file_dentry)) {
+		pr_warn("Source file dentry negative\n");
+		error = -EINVAL;
+		goto out;
+	}
+
+	error = vfs_getxattr(source_file_dentry, INCFS_XATTR_SIZE_NAME,
+			     (char *)&size_attr_value, sizeof(size_attr_value));
+	if (error < 0)
+		goto out;
+
+	if (error != sizeof(size_attr_value)) {
+		pr_warn("Mapped file has no size attr\n");
+		error = -EINVAL;
+		goto out;
+	}
+
+	source_file_size = le64_to_cpu(size_attr_value);
+	if (args.source_offset + args.size > source_file_size) {
+		pr_warn("Mapped file out of range\n");
+		error = -EINVAL;
+		goto out;
+	}
+
+	/* Find a directory to put the file into. */
+	error = dir_relative_path_resolve(mi,
+			u64_to_user_ptr(args.directory_path),
+			&parent_dir_path);
+	if (error)
+		goto out;
+
+	if (parent_dir_path.dentry == mi->mi_index_dir) {
+		/* Can't create a file directly inside .index */
+		error = -EBUSY;
+		goto out;
+	}
+
+	/* Look up a dentry in the parent dir. It should be negative. */
+	file_dentry = incfs_lookup_dentry(parent_dir_path.dentry,
+					file_name);
+	if (!file_dentry) {
+		error = -EFAULT;
+		goto out;
+	}
+	if (IS_ERR(file_dentry)) {
+		error = PTR_ERR(file_dentry);
+		file_dentry = NULL;
+		goto out;
+	}
+	if (d_really_is_positive(file_dentry)) {
+		error = -EEXIST;
+		goto out;
+	}
+
+	parent_inode = d_inode(parent_dir_path.dentry);
+	inode_lock_nested(parent_inode, I_MUTEX_PARENT);
+	error = vfs_create(parent_inode, file_dentry, args.mode | 0222, true);
+	inode_unlock(parent_inode);
+	if (error)
+		goto out;
+
+	/* Save the file's size as an xattr for easy fetching in future. */
+	size_attr_value = cpu_to_le64(args.size);
+	error = vfs_setxattr(file_dentry, INCFS_XATTR_SIZE_NAME,
+		(char *)&size_attr_value, sizeof(size_attr_value),
+		XATTR_CREATE);
+	if (error) {
+		pr_debug("incfs: vfs_setxattr err:%d\n", error);
+		goto delete_file;
+	}
+
+	error = init_new_mapped_file(mi, file_dentry, &args.source_file_id,
+			size_attr_value, cpu_to_le64(args.source_offset));
+	if (error)
+		goto delete_file;
+
+	goto out;
+
+delete_file:
+	incfs_unlink(file_dentry);
+
+out:
+	dput(file_dentry);
+	dput(source_file_dentry);
+	path_put(&parent_dir_path);
+	kfree(file_name);
+	kfree(source_file_name);
+	return error;
+}
+
 static long dispatch_ioctl(struct file *f, unsigned int req, unsigned long arg)
 {
 	struct mount_info *mi = get_mount_info(file_superblock(f));
@@ -1497,6 +1660,8 @@ static long dispatch_ioctl(struct file *f, unsigned int req, unsigned long arg)
 		return ioctl_read_file_signature(f, (void __user *)arg);
 	case INCFS_IOC_GET_FILLED_BLOCKS:
 		return ioctl_get_filled_blocks(f, (void __user *)arg);
+	case INCFS_IOC_CREATE_MAPPED_FILE:
+		return ioctl_create_mapped_file(mi, (void __user *)arg);
 	default:
 		return -EINVAL;
 	}
@@ -1513,6 +1678,9 @@ static struct dentry *dir_lookup(struct inode *dir_inode, struct dentry *dentry,
 	struct mem_range name_range =
 			range((u8 *)dentry->d_name.name, dentry->d_name.len);
 	int err = 0;
+
+	if (!mi || !dir_info || !dir_info->n_backing_inode)
+		return ERR_PTR(-EBADF);
 
 	if (d_inode(mi->mi_backing_dir_path.dentry) ==
 		dir_info->n_backing_inode) {
@@ -1629,7 +1797,7 @@ static int dir_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 
 	if (!backing_dentry) {
 		err = -EBADF;
-		goto out;
+		goto path_err;
 	}
 
 	if (backing_dentry->d_parent == mi->mi_index_dir) {
@@ -1644,7 +1812,8 @@ static int dir_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 	if (!err) {
 		struct inode *inode = NULL;
 
-		if (d_really_is_negative(backing_dentry)) {
+		if (d_really_is_negative(backing_dentry) ||
+			unlikely(d_unhashed(backing_dentry))) {
 			err = -EINVAL;
 			goto out;
 		}
@@ -1661,6 +1830,8 @@ out:
 	if (d_really_is_negative(dentry))
 		d_drop(dentry);
 	path_put(&backing_path);
+
+path_err:
 	mutex_unlock(&mi->mi_dir_struct_mutex);
 	if (err)
 		pr_debug("incfs: %s err:%d\n", __func__, err);
@@ -1716,6 +1887,9 @@ static int dir_unlink(struct inode *dir, struct dentry *dentry)
 	struct kstat stat;
 	int err = 0;
 
+	if (!mi)
+		return -EBADF;
+
 	err = mutex_lock_interruptible(&mi->mi_dir_struct_mutex);
 	if (err)
 		return err;
@@ -1723,7 +1897,7 @@ static int dir_unlink(struct inode *dir, struct dentry *dentry)
 	get_incfs_backing_path(dentry, &backing_path);
 	if (!backing_path.dentry) {
 		err = -EBADF;
-		goto out;
+		goto path_err;
 	}
 
 	if (backing_path.dentry->d_parent == mi->mi_index_dir) {
@@ -1751,6 +1925,7 @@ static int dir_unlink(struct inode *dir, struct dentry *dentry)
 	d_drop(dentry);
 out:
 	path_put(&backing_path);
+path_err:
 	if (err)
 		pr_debug("incfs: %s err:%d\n", __func__, err);
 	mutex_unlock(&mi->mi_dir_struct_mutex);
@@ -1764,6 +1939,9 @@ static int dir_link(struct dentry *old_dentry, struct inode *dir,
 	struct path backing_old_path = {};
 	struct path backing_new_path = {};
 	int error = 0;
+
+	if (!mi)
+		return -EBADF;
 
 	error = mutex_lock_interruptible(&mi->mi_dir_struct_mutex);
 	if (error)
@@ -1811,6 +1989,9 @@ static int dir_rmdir(struct inode *dir, struct dentry *dentry)
 	struct path backing_path = {};
 	int err = 0;
 
+	if (!mi)
+		return -EBADF;
+
 	err = mutex_lock_interruptible(&mi->mi_dir_struct_mutex);
 	if (err)
 		return err;
@@ -1818,7 +1999,7 @@ static int dir_rmdir(struct inode *dir, struct dentry *dentry)
 	get_incfs_backing_path(dentry, &backing_path);
 	if (!backing_path.dentry) {
 		err = -EBADF;
-		goto out;
+		goto path_err;
 	}
 
 	if (backing_path.dentry == mi->mi_index_dir) {
@@ -1832,6 +2013,8 @@ static int dir_rmdir(struct inode *dir, struct dentry *dentry)
 		d_drop(dentry);
 out:
 	path_put(&backing_path);
+
+path_err:
 	if (err)
 		pr_debug("incfs: %s err:%d\n", __func__, err);
 	mutex_unlock(&mi->mi_dir_struct_mutex);
@@ -1855,6 +2038,13 @@ static int dir_rename(struct inode *old_dir, struct dentry *old_dentry,
 		return error;
 
 	backing_old_dentry = get_incfs_dentry(old_dentry)->backing_path.dentry;
+
+	if (!backing_old_dentry || backing_old_dentry == mi->mi_index_dir) {
+		/* Renaming .index not allowed */
+		error = -EBUSY;
+		goto exit;
+	}
+
 	backing_new_dentry = get_incfs_dentry(new_dentry)->backing_path.dentry;
 	dget(backing_old_dentry);
 	dget(backing_new_dentry);
@@ -1901,6 +2091,7 @@ out:
 	dput(backing_new_dentry);
 	dput(backing_old_dentry);
 
+exit:
 	mutex_unlock(&mi->mi_dir_struct_mutex);
 	if (error)
 		pr_debug("incfs: %s err:%d\n", __func__, error);
@@ -1914,13 +2105,17 @@ static int file_open(struct inode *inode, struct file *file)
 	struct file *backing_file = NULL;
 	struct path backing_path = {};
 	int err = 0;
-	const struct cred *old_cred;
+	int flags = O_NOATIME | O_LARGEFILE |
+		(S_ISDIR(inode->i_mode) ? O_RDONLY : O_RDWR);
+
+	if (!mi)
+		return -EBADF;
 
 	get_incfs_backing_path(file->f_path.dentry, &backing_path);
-	old_cred = override_creds(mi->mi_owner);
-	backing_file = dentry_open(&backing_path,
-			O_RDWR | O_NOATIME | O_LARGEFILE, current_cred());
-	revert_creds(old_cred);
+	if (!backing_path.dentry)
+		return -EBADF;
+
+	backing_file = dentry_open(&backing_path, flags, mi->mi_owner);
 	path_put(&backing_path);
 
 	if (IS_ERR(backing_file)) {
@@ -2183,7 +2378,6 @@ struct dentry *incfs_mount_fs(struct file_system_type *type, int flags,
 	struct super_block *src_fs_sb = NULL;
 	struct inode *root_inode = NULL;
 	struct super_block *sb = sget(type, NULL, set_anon_super, flags, NULL);
-	bool dir_created = false;
 	int error = 0;
 
 	if (IS_ERR(sb))
@@ -2200,23 +2394,17 @@ struct dentry *incfs_mount_fs(struct file_system_type *type, int flags,
 
 	BUILD_BUG_ON(PAGE_SIZE != INCFS_DATA_FILE_BLOCK_SIZE);
 
-	if (!dev_name) {
-		pr_err("incfs: Backing dir is not set, filesystem can't be mounted.\n");
-		error = -ENOENT;
-		goto err_deactivate;
-	}
-
 	error = parse_options(&options, (char *)data);
 	if (error != 0) {
 		pr_err("incfs: Options parsing error. %d\n", error);
-		goto err_deactivate;
+		goto err;
 	}
 
 	sb->s_bdi->ra_pages = options.readahead_pages;
 	if (!dev_name) {
 		pr_err("incfs: Backing dir is not set, filesystem can't be mounted.\n");
 		error = -ENOENT;
-		goto err_deactivate;
+		goto err;
 	}
 
 	error = kern_path(dev_name, LOOKUP_FOLLOW | LOOKUP_DIRECTORY,
@@ -2225,64 +2413,55 @@ struct dentry *incfs_mount_fs(struct file_system_type *type, int flags,
 		!d_really_is_positive(backing_dir_path.dentry)) {
 		pr_err("incfs: Error accessing: %s.\n",
 			dev_name);
-		goto err_deactivate;
+		goto err;
 	}
 	src_fs_sb = backing_dir_path.dentry->d_sb;
 	sb->s_maxbytes = src_fs_sb->s_maxbytes;
-	sb->s_stack_depth = src_fs_sb->s_stack_depth + 1;
-
-	if (sb->s_stack_depth > FILESYSTEM_MAX_STACK_DEPTH) {
-		error = -EINVAL;
-		goto err_put_path;
-	}
 
 	mi = incfs_alloc_mount_info(sb, &options, &backing_dir_path);
+
 	if (IS_ERR_OR_NULL(mi)) {
 		error = PTR_ERR(mi);
 		pr_err("incfs: Error allocating mount info. %d\n", error);
-		goto err_put_path;
+		mi = NULL;
+		goto err;
 	}
 
-	sb->s_fs_info = mi;
-	mi->mi_backing_dir_path = backing_dir_path;
-	index_dir = open_or_create_index_dir(backing_dir_path.dentry,
-					     &dir_created);
+	index_dir = open_or_create_index_dir(backing_dir_path.dentry);
 	if (IS_ERR_OR_NULL(index_dir)) {
 		error = PTR_ERR(index_dir);
 		pr_err("incfs: Can't find or create .index dir in %s\n",
 			dev_name);
-		goto err_put_path;
+		goto err;
 	}
-
 	mi->mi_index_dir = index_dir;
-	mi->mi_index_free = dir_created;
 
+	sb->s_fs_info = mi;
 	root_inode = fetch_regular_inode(sb, backing_dir_path.dentry);
 	if (IS_ERR(root_inode)) {
 		error = PTR_ERR(root_inode);
-		goto err_put_path;
+		goto err;
 	}
 
 	sb->s_root = d_make_root(root_inode);
 	if (!sb->s_root) {
 		error = -ENOMEM;
-		goto err_put_path;
+		goto err;
 	}
 	error = incfs_init_dentry(sb->s_root, &backing_dir_path);
 	if (error)
-		goto err_put_path;
+		goto err;
 
 	path_put(&backing_dir_path);
 	sb->s_flags |= SB_ACTIVE;
 
 	pr_debug("incfs: mount\n");
 	return dget(sb->s_root);
-
-err_put_path:
+err:
+	sb->s_fs_info = NULL;
 	path_put(&backing_dir_path);
-err_deactivate:
+	incfs_free_mount_info(mi);
 	deactivate_locked_super(sb);
-	pr_err("incfs: mount failed %d\n", error);
 	return ERR_PTR(error);
 }
 
@@ -2308,28 +2487,10 @@ static int incfs_remount_fs(struct super_block *sb, int *flags, char *data)
 void incfs_kill_sb(struct super_block *sb)
 {
 	struct mount_info *mi = sb->s_fs_info;
-	struct inode *dinode = NULL;
 
 	pr_debug("incfs: unmount\n");
-
-	/*
-	 * We must kill the super before freeing mi, since killing the super
-	 * triggers inode eviction, which triggers the final update of the
-	 * backing file, which uses certain information for mi
-	 */
-	kill_anon_super(sb);
-
-	if (mi) {
-		if (mi->mi_backing_dir_path.dentry)
-			dinode = d_inode(mi->mi_backing_dir_path.dentry);
-
-		if (dinode) {
-			if (mi->mi_index_dir && mi->mi_index_free)
-				vfs_rmdir(dinode, mi->mi_index_dir);
-		}
-		incfs_free_mount_info(mi);
-		sb->s_fs_info = NULL;
-	}
+	incfs_free_mount_info(mi);
+	generic_shutdown_super(sb);
 }
 
 static int show_options(struct seq_file *m, struct dentry *root)

@@ -29,7 +29,6 @@
 
 #define TEST_FAILURE 1
 #define TEST_SUCCESS 0
-#define INCFS_MAX_MTREE_LEVELS 8
 
 #define INCFS_ROOT_INODE 0
 
@@ -248,7 +247,7 @@ out:
 	return fd;
 }
 
-int get_file_attr(char *mnt_dir, incfs_uuid_t id, char *value, int size)
+int get_file_attr(const char *mnt_dir, incfs_uuid_t id, char *value, int size)
 {
 	char *path = get_index_filename(mnt_dir, id);
 	int res;
@@ -266,7 +265,7 @@ static bool same_id(incfs_uuid_t *id1, incfs_uuid_t *id2)
 	return !memcmp(id1->bytes, id2->bytes, sizeof(id1->bytes));
 }
 
-static int emit_test_blocks(char *mnt_dir, struct test_file *file,
+static int emit_test_blocks(const char *mnt_dir, struct test_file *file,
 			int blocks[], int count)
 {
 	uint8_t data[INCFS_DATA_FILE_BLOCK_SIZE];
@@ -376,7 +375,7 @@ out:
 	return (error < 0) ? error : blocks_written;
 }
 
-static int emit_test_block(char *mnt_dir, struct test_file *file,
+static int emit_test_block(const char *mnt_dir, struct test_file *file,
 				int block_index)
 {
 	int res = emit_test_blocks(mnt_dir, file, &block_index, 1);
@@ -406,7 +405,7 @@ static void shuffle(int array[], int count, unsigned int seed)
 	}
 }
 
-static int emit_test_file_data(char *mount_dir, struct test_file *file)
+static int emit_test_file_data(const char *mount_dir, struct test_file *file)
 {
 	int i;
 	int block_cnt = 1 + (file->size - 1) / INCFS_DATA_FILE_BLOCK_SIZE;
@@ -439,7 +438,7 @@ out:
 	return result;
 }
 
-static loff_t read_whole_file(char *filename)
+static loff_t read_whole_file(const char *filename)
 {
 	int fd = -1;
 	loff_t result;
@@ -505,7 +504,7 @@ cleanup:
 	return result;
 }
 
-static char *create_backing_dir(char *mount_dir)
+static char *create_backing_dir(const char *mount_dir)
 {
 	struct stat st;
 	char backing_dir_name[255];
@@ -541,7 +540,7 @@ static char *create_backing_dir(char *mount_dir)
 	return strdup(backing_dir_name);
 }
 
-static int validate_test_file_content_with_seed(char *mount_dir,
+static int validate_test_file_content_with_seed(const char *mount_dir,
 						struct test_file *file,
 						unsigned int shuffle_seed)
 {
@@ -603,12 +602,13 @@ failure:
 	return error;
 }
 
-static int validate_test_file_content(char *mount_dir, struct test_file *file)
+static int validate_test_file_content(const char *mount_dir,
+				      struct test_file *file)
 {
 	return validate_test_file_content_with_seed(mount_dir, file, 0);
 }
 
-static int data_producer(char *mount_dir, struct test_files_set *test_set)
+static int data_producer(const char *mount_dir, struct test_files_set *test_set)
 {
 	int ret = 0;
 	int timeout_ms = 1000;
@@ -803,7 +803,7 @@ failure:
 	return err;
 }
 
-static int cant_touch_index_test(char *mount_dir)
+static int cant_touch_index_test(const char *mount_dir)
 {
 	char *file_name = "test_file";
 	int file_size = 123;
@@ -834,6 +834,12 @@ static int cant_touch_index_test(char *mount_dir)
 	err = mkdir(subdir, 0777);
 	if (err == 0 || errno != EBUSY) {
 		print_error("Shouldn't be able to crate subdir in index\n");
+		goto failure;
+	}
+
+	err = rmdir(index_path);
+	if (err == 0 || errno != EBUSY) {
+		print_error(".index directory should not be removed\n");
 		goto failure;
 	}
 
@@ -871,6 +877,12 @@ static int cant_touch_index_test(char *mount_dir)
 		goto failure;
 	}
 
+	err = rename(index_path, dst_name);
+	if (err == 0 || errno != EBUSY) {
+		print_error("Shouldn't rename .index directory\n");
+		goto failure;
+	}
+
 	close(cmd_fd);
 	free(subdir);
 	free(index_path);
@@ -893,7 +905,8 @@ failure:
 	return TEST_FAILURE;
 }
 
-static bool iterate_directory(char *dir_to_iterate, bool root, int file_count)
+static bool iterate_directory(const char *dir_to_iterate, bool root,
+			      int file_count)
 {
 	struct expected_name {
 		const char *name;
@@ -998,7 +1011,7 @@ failure:
 	return pass;
 }
 
-static int basic_file_ops_test(char *mount_dir)
+static int basic_file_ops_test(const char *mount_dir)
 {
 	struct test_files_set test = get_test_files_set();
 	const int file_num = test.files_count;
@@ -1164,7 +1177,7 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int dynamic_files_and_data_test(char *mount_dir)
+static int dynamic_files_and_data_test(const char *mount_dir)
 {
 	struct test_files_set test = get_test_files_set();
 	const int file_num = test.files_count;
@@ -1270,7 +1283,7 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int concurrent_reads_and_writes_test(char *mount_dir)
+static int concurrent_reads_and_writes_test(const char *mount_dir)
 {
 	struct test_files_set test = get_test_files_set();
 	const int file_num = test.files_count;
@@ -1392,7 +1405,7 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int work_after_remount_test(char *mount_dir)
+static int work_after_remount_test(const char *mount_dir)
 {
 	struct test_files_set test = get_test_files_set();
 	const int file_num = test.files_count;
@@ -1542,7 +1555,7 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int attribute_test(char *mount_dir)
+static int attribute_test(const char *mount_dir)
 {
 	char file_attr[] = "metadata123123";
 	char attr_buf[INCFS_MAX_FILE_ATTR_SIZE] = {};
@@ -1625,7 +1638,7 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int child_procs_waiting_for_data_test(char *mount_dir)
+static int child_procs_waiting_for_data_test(const char *mount_dir)
 {
 	struct test_files_set test = get_test_files_set();
 	const int file_num = test.files_count;
@@ -1717,7 +1730,7 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int multiple_providers_test(char *mount_dir)
+static int multiple_providers_test(const char *mount_dir)
 {
 	struct test_files_set test = get_test_files_set();
 	const int file_num = test.files_count;
@@ -1812,7 +1825,7 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int hash_tree_test(char *mount_dir)
+static int hash_tree_test(const char *mount_dir)
 {
 	char *backing_dir;
 	struct test_files_set test = get_test_files_set();
@@ -1934,7 +1947,8 @@ failure:
 
 enum expected_log { FULL_LOG, NO_LOG, PARTIAL_LOG };
 
-static int validate_logs(char *mount_dir, int log_fd, struct test_file *file,
+static int validate_logs(const char *mount_dir, int log_fd,
+			 struct test_file *file,
 			 enum expected_log expected_log)
 {
 	uint8_t data[INCFS_DATA_FILE_BLOCK_SIZE];
@@ -2056,7 +2070,7 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int read_log_test(char *mount_dir)
+static int read_log_test(const char *mount_dir)
 {
 	struct test_files_set test = get_test_files_set();
 	const int file_num = test.files_count;
@@ -2218,7 +2232,8 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int emit_partial_test_file_data(char *mount_dir, struct test_file *file)
+static int emit_partial_test_file_data(const char *mount_dir,
+				       struct test_file *file)
 {
 	int i, j;
 	int block_cnt = 1 + (file->size - 1) / INCFS_DATA_FILE_BLOCK_SIZE;
@@ -2384,7 +2399,7 @@ out:
 	return error;
 }
 
-static int get_blocks_test(char *mount_dir)
+static int get_blocks_test(const char *mount_dir)
 {
 	char *backing_dir;
 	int cmd_fd = -1;
@@ -2441,7 +2456,8 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int emit_partial_test_file_hash(char *mount_dir, struct test_file *file)
+static int emit_partial_test_file_hash(const char *mount_dir,
+				       struct test_file *file)
 {
 	int err;
 	int fd;
@@ -2559,7 +2575,7 @@ out:
 	return error;
 }
 
-static int get_hash_blocks_test(char *mount_dir)
+static int get_hash_blocks_test(const char *mount_dir)
 {
 	char *backing_dir;
 	int cmd_fd = -1;
@@ -2609,7 +2625,7 @@ failure:
 	return TEST_FAILURE;
 }
 
-static int large_file(char *mount_dir)
+static int large_file_test(const char *mount_dir)
 {
 	char *backing_dir;
 	int cmd_fd = -1;
@@ -2624,7 +2640,7 @@ static int large_file(char *mount_dir)
 		.fill_blocks = ptr_to_u64(block_buf),
 	};
 	incfs_uuid_t id;
-	int fd;
+	int fd = -1;
 
 	backing_dir = create_backing_dir(mount_dir);
 	if (!backing_dir)
@@ -2665,6 +2681,166 @@ static int large_file(char *mount_dir)
 failure:
 	close(fd);
 	close(cmd_fd);
+	umount(mount_dir);
+	free(backing_dir);
+	return result;
+}
+
+static int validate_mapped_file(const char *orig_name, const char *name,
+				size_t size, size_t offset)
+{
+	struct stat st;
+	int orig_fd = -1, fd = -1;
+	size_t block;
+	int result = TEST_FAILURE;
+
+	if (stat(name, &st)) {
+		ksft_print_msg("Failed to stat %s with error %s\n",
+			       name, strerror(errno));
+		goto failure;
+	}
+
+	if (size != st.st_size) {
+		ksft_print_msg("Mismatched file sizes for file %s - expected %llu, got %llu\n",
+				   name, size, st.st_size);
+		goto failure;
+	}
+
+	fd = open(name, O_RDONLY | O_CLOEXEC);
+	if (fd == -1) {
+		ksft_print_msg("Failed to open %s with error %s\n", name,
+			       strerror(errno));
+		goto failure;
+	}
+
+	orig_fd = open(orig_name, O_RDONLY | O_CLOEXEC);
+	if (orig_fd == -1) {
+		ksft_print_msg("Failed to open %s with error %s\n", orig_name,
+			       strerror(errno));
+		goto failure;
+	}
+
+	for (block = 0; block < size; block += INCFS_DATA_FILE_BLOCK_SIZE) {
+		uint8_t orig_data[INCFS_DATA_FILE_BLOCK_SIZE];
+		uint8_t data[INCFS_DATA_FILE_BLOCK_SIZE];
+		ssize_t orig_read, mapped_read;
+
+		orig_read = pread(orig_fd, orig_data,
+				 INCFS_DATA_FILE_BLOCK_SIZE, block + offset);
+		mapped_read = pread(fd, data, INCFS_DATA_FILE_BLOCK_SIZE,
+				    block);
+
+		if (orig_read < mapped_read ||
+		    mapped_read != min(size - block,
+				       INCFS_DATA_FILE_BLOCK_SIZE)) {
+			ksft_print_msg("Failed to read enough data: %llu %llu %llu %lld %lld\n",
+				       block, size, offset, orig_read,
+				       mapped_read);
+			goto failure;
+		}
+
+		if (memcmp(orig_data, data, mapped_read)) {
+			ksft_print_msg("Data doesn't match: %llu %llu %llu %lld %lld\n",
+				       block, size, offset, orig_read,
+				       mapped_read);
+			goto failure;
+		}
+	}
+
+	result = TEST_SUCCESS;
+
+failure:
+	close(orig_fd);
+	close(fd);
+	return result;
+}
+
+static int mapped_file_test(const char *mount_dir)
+{
+	char *backing_dir;
+	int result = TEST_FAILURE;
+	int cmd_fd = -1;
+	int i;
+	struct test_files_set test = get_test_files_set();
+	const int file_num = test.files_count;
+
+	backing_dir = create_backing_dir(mount_dir);
+	if (!backing_dir)
+		goto failure;
+
+	if (mount_fs_opt(mount_dir, backing_dir, "readahead=0", false) != 0)
+		goto failure;
+
+	cmd_fd = open_commands_file(mount_dir);
+	if (cmd_fd < 0)
+		goto failure;
+
+	for (i = 0; i < file_num; ++i) {
+		struct test_file *file = &test.files[i];
+		size_t blocks = file->size / INCFS_DATA_FILE_BLOCK_SIZE;
+		size_t mapped_offset = blocks / 4 *
+			INCFS_DATA_FILE_BLOCK_SIZE;
+		size_t mapped_size = file->size / 4 * 3 - mapped_offset;
+		struct incfs_create_mapped_file_args mfa;
+		char mapped_file_name[FILENAME_MAX];
+		char orig_file_path[PATH_MAX];
+		char mapped_file_path[PATH_MAX];
+
+		if (emit_file(cmd_fd, NULL, file->name, &file->id, file->size,
+					NULL) < 0)
+			goto failure;
+
+		if (emit_test_file_data(mount_dir, file))
+			goto failure;
+
+		if (snprintf(mapped_file_name, ARRAY_SIZE(mapped_file_name),
+					"%s.mapped", file->name) < 0)
+			goto failure;
+
+		mfa = (struct incfs_create_mapped_file_args) {
+			.size = mapped_size,
+			.mode = 0664,
+			.file_name = ptr_to_u64(mapped_file_name),
+			.source_file_id = file->id,
+			.source_offset = mapped_offset,
+		};
+
+		result = ioctl(cmd_fd, INCFS_IOC_CREATE_MAPPED_FILE, &mfa);
+		if (result) {
+			ksft_print_msg(
+				"Failed to create mapped file with error %d\n",
+				result);
+			goto failure;
+		}
+
+		result = snprintf(orig_file_path,
+				  ARRAY_SIZE(orig_file_path), "%s/%s",
+				  mount_dir, file->name);
+
+		if (result < 0 || result >= ARRAY_SIZE(mapped_file_path)) {
+			result = TEST_FAILURE;
+			goto failure;
+		}
+
+		result = snprintf(mapped_file_path,
+				  ARRAY_SIZE(mapped_file_path), "%s/%s",
+				  mount_dir, mapped_file_name);
+
+		if (result < 0 || result >= ARRAY_SIZE(mapped_file_path)) {
+			result = TEST_FAILURE;
+			goto failure;
+		}
+
+		result = validate_mapped_file(orig_file_path, mapped_file_path,
+					      mapped_size, mapped_offset);
+		if (result)
+			goto failure;
+	}
+
+failure:
+	close(cmd_fd);
+	umount(mount_dir);
+	free(backing_dir);
 	return result;
 }
 
@@ -2691,12 +2867,54 @@ static char *setup_mount_dir()
 	return mount_dir;
 }
 
+struct options {
+	int test;
+};
+
+int parse_options(int argc, char *const *argv, struct options *options)
+{
+	signed char c;
+
+	while ((c = getopt(argc, argv, "t:")) != -1)
+		switch (c) {
+		case 't':
+			options->test = strtol(optarg, NULL, 10);
+			break;
+
+		default:
+			return -EINVAL;
+		}
+
+	return 0;
+}
+
+struct test_case {
+	int (*pfunc)(const char *dir);
+	const char *name;
+};
+
+void run_one_test(const char *mount_dir, struct test_case *test_case,
+		  int *fails)
+{
+	ksft_print_msg("Running %s\n", test_case->name);
+	if (test_case->pfunc(mount_dir) == TEST_SUCCESS)
+		ksft_test_result_pass("%s\n", test_case->name);
+	else {
+		ksft_test_result_fail("%s\n", test_case->name);
+		fails++;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	char *mount_dir = NULL;
 	int fails = 0;
 	int i;
 	int fd, count;
+	struct options options = {};
+
+	if (parse_options(argc, argv, &options))
+		ksft_exit_fail_msg("Bad options\n");
 
 	// Seed randomness pool for testing on QEMU
 	// NOTE - this abuses the concept of randomness - do *not* ever do this
@@ -2721,10 +2939,7 @@ int main(int argc, char *argv[])
 	{                                                                      \
 		test, #test                                                    \
 	}
-	struct {
-		int (*pfunc)(char *dir);
-		const char *name;
-	} cases[] = {
+	struct test_case cases[] = {
 		MAKE_TEST(basic_file_ops_test),
 		MAKE_TEST(cant_touch_index_test),
 		MAKE_TEST(dynamic_files_and_data_test),
@@ -2737,22 +2952,19 @@ int main(int argc, char *argv[])
 		MAKE_TEST(read_log_test),
 		MAKE_TEST(get_blocks_test),
 		MAKE_TEST(get_hash_blocks_test),
-		MAKE_TEST(large_file),
+		MAKE_TEST(large_file_test),
+		MAKE_TEST(mapped_file_test),
 	};
 #undef MAKE_TEST
 
-	/* Bring back for kernel 5.x */
-	/* ksft_set_plan(ARRAY_SIZE(cases)); */
+	if (options.test) {
+		if (options.test <= 0 || options.test > ARRAY_SIZE(cases))
+			ksft_exit_fail_msg("Invalid test\n");
 
-	for (i = 0; i < ARRAY_SIZE(cases); ++i) {
-		ksft_print_msg("Running %s\n", cases[i].name);
-		if (cases[i].pfunc(mount_dir) == TEST_SUCCESS)
-			ksft_test_result_pass("%s\n", cases[i].name);
-		else {
-			ksft_test_result_fail("%s\n", cases[i].name);
-			fails++;
-		}
-	}
+		run_one_test(mount_dir, &cases[options.test - 1], &fails);
+	} else
+		for (i = 0; i < ARRAY_SIZE(cases); ++i)
+			run_one_test(mount_dir, &cases[i], &fails);
 
 	umount2(mount_dir, MNT_FORCE);
 	rmdir(mount_dir);

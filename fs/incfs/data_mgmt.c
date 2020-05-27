@@ -8,6 +8,7 @@
 #include <linux/ktime.h>
 #include <linux/lz4.h>
 #include <linux/mm.h>
+#include <linux/namei.h>
 #include <linux/pagemap.h>
 #include <linux/slab.h>
 #include <linux/types.h>
@@ -40,11 +41,11 @@ struct mount_info *incfs_alloc_mount_info(struct super_block *sb,
 	mi->mi_owner = get_current_cred();
 	path_get(&mi->mi_backing_dir_path);
 	mutex_init(&mi->mi_dir_struct_mutex);
-	mutex_init(&mi->mi_pending_reads_mutex);
 	init_waitqueue_head(&mi->mi_pending_reads_notif_wq);
 	init_waitqueue_head(&mi->mi_log.ml_notif_wq);
 	INIT_DELAYED_WORK(&mi->mi_log.ml_wakeup_work, log_wake_up_all);
 	spin_lock_init(&mi->mi_log.rl_lock);
+	spin_lock_init(&mi->pending_read_lock);
 	INIT_LIST_HEAD(&mi->mi_reads_list_head);
 
 	error = incfs_realloc_mount_info(mi, options);
@@ -109,7 +110,6 @@ void incfs_free_mount_info(struct mount_info *mi)
 	dput(mi->mi_index_dir);
 	path_put(&mi->mi_backing_dir_path);
 	mutex_destroy(&mi->mi_dir_struct_mutex);
-	mutex_destroy(&mi->mi_pending_reads_mutex);
 	put_cred(mi->mi_owner);
 	kfree(mi->mi_log.rl_ring_buf);
 	kfree(mi->log_xattr);
@@ -120,13 +120,88 @@ void incfs_free_mount_info(struct mount_info *mi)
 static void data_file_segment_init(struct data_file_segment *segment)
 {
 	init_waitqueue_head(&segment->new_data_arrival_wq);
-	mutex_init(&segment->blockmap_mutex);
+	init_rwsem(&segment->rwsem);
 	INIT_LIST_HEAD(&segment->reads_list_head);
 }
 
-static void data_file_segment_destroy(struct data_file_segment *segment)
+char *file_id_to_str(incfs_uuid_t id)
 {
-	mutex_destroy(&segment->blockmap_mutex);
+	char *result = kmalloc(1 + sizeof(id.bytes) * 2, GFP_NOFS);
+	char *end;
+
+	if (!result)
+		return NULL;
+
+	end = bin2hex(result, id.bytes, sizeof(id.bytes));
+	*end = 0;
+	return result;
+}
+
+struct dentry *incfs_lookup_dentry(struct dentry *parent, const char *name)
+{
+	struct inode *inode;
+	struct dentry *result = NULL;
+
+	if (!parent)
+		return ERR_PTR(-EFAULT);
+
+	inode = d_inode(parent);
+	inode_lock_nested(inode, I_MUTEX_PARENT);
+	result = lookup_one_len(name, parent, strlen(name));
+	inode_unlock(inode);
+
+	if (IS_ERR(result))
+		pr_warn("%s err:%ld\n", __func__, PTR_ERR(result));
+
+	return result;
+}
+
+static struct data_file *handle_mapped_file(struct mount_info *mi,
+					    struct data_file *df)
+{
+	char *file_id_str;
+	struct dentry *index_file_dentry;
+	struct path path;
+	struct file *bf;
+	struct data_file *result = NULL;
+
+	file_id_str = file_id_to_str(df->df_id);
+	if (!file_id_str)
+		return ERR_PTR(-ENOENT);
+
+	index_file_dentry = incfs_lookup_dentry(mi->mi_index_dir,
+						file_id_str);
+	kfree(file_id_str);
+	if (!index_file_dentry)
+		return ERR_PTR(-ENOENT);
+	if (IS_ERR(index_file_dentry))
+		return (struct data_file *)index_file_dentry;
+	if (!d_really_is_positive(index_file_dentry)) {
+		result = ERR_PTR(-ENOENT);
+		goto out;
+	}
+
+	path = (struct path) {
+		.mnt = mi->mi_backing_dir_path.mnt,
+		.dentry = index_file_dentry
+	};
+
+	bf = dentry_open(&path, O_RDWR | O_NOATIME | O_LARGEFILE, mi->mi_owner);
+	if (IS_ERR(bf)) {
+		result = (struct data_file *)bf;
+		goto out;
+	}
+
+	result = incfs_open_data_file(mi, bf);
+	fput(bf);
+	if (IS_ERR(result))
+		goto out;
+
+	result->df_mapped_offset = df->df_metadata_off;
+
+out:
+	dput(index_file_dentry);
+	return result;
 }
 
 struct data_file *incfs_open_data_file(struct mount_info *mi, struct file *bf)
@@ -144,7 +219,7 @@ struct data_file *incfs_open_data_file(struct mount_info *mi, struct file *bf)
 	if (!S_ISREG(bf->f_inode->i_mode))
 		return ERR_PTR(-EBADF);
 
-	bfc = incfs_alloc_bfc(mi, bf);
+	bfc = incfs_alloc_bfc(bf);
 	if (IS_ERR(bfc))
 		return ERR_CAST(bfc);
 
@@ -173,6 +248,13 @@ struct data_file *incfs_open_data_file(struct mount_info *mi, struct file *bf)
 	if (size > 0)
 		df->df_data_block_count = get_blocks_count_for_size(size);
 
+	if (df->df_header_flags & INCFS_FILE_MAPPED) {
+		struct data_file *mapped_df = handle_mapped_file(mi, df);
+
+		incfs_free_data_file(df);
+		return mapped_df;
+	}
+
 	md_records = incfs_scan_metadata_chain(df);
 	if (md_records < 0)
 		error = md_records;
@@ -190,16 +272,11 @@ out:
 
 void incfs_free_data_file(struct data_file *df)
 {
-	int i;
-
 	if (!df)
 		return;
 
 	incfs_free_mtree(df->df_hash_tree);
-	for (i = 0; i < ARRAY_SIZE(df->df_segments); i++)
-		data_file_segment_destroy(&df->df_segments[i]);
 	incfs_free_bfc(df->df_backing_file_context);
-	kfree(df->df_signature);
 	kfree(df);
 }
 
@@ -388,8 +465,8 @@ static void log_block_read(struct mount_info *mi, incfs_uuid_t *id,
 	schedule_delayed_work(&log->ml_wakeup_work, msecs_to_jiffies(16));
 }
 
-static int validate_hash_tree(struct backing_file_context *bfc, struct file *f,
-			      int block_index, struct mem_range data, u8 *buf)
+static int validate_hash_tree(struct file *bf, struct file *f, int block_index,
+			      struct mem_range data, u8 *buf)
 {
 	struct data_file *df = get_incfs_data_file(f);
 	u8 stored_digest[INCFS_MAX_HASH_SIZE] = {};
@@ -446,7 +523,7 @@ static int validate_hash_tree(struct backing_file_context *bfc, struct file *f,
 		if (page)
 			put_page(page);
 
-		res = incfs_kread(bfc, buf, INCFS_DATA_FILE_BLOCK_SIZE,
+		res = incfs_kread(bf, buf, INCFS_DATA_FILE_BLOCK_SIZE,
 				  hash_block_offset[lvl] + sig->hash_offset);
 		if (res < 0)
 			return res;
@@ -757,17 +834,27 @@ static struct pending_read *add_pending_read(struct data_file *df,
 	result->block_index = block_index;
 	result->timestamp_us = ktime_to_us(ktime_get());
 
-	mutex_lock(&mi->mi_pending_reads_mutex);
+	spin_lock(&mi->pending_read_lock);
 
 	result->serial_number = ++mi->mi_last_pending_read_number;
 	mi->mi_pending_reads_count++;
 
-	list_add(&result->mi_reads_list, &mi->mi_reads_list_head);
-	list_add(&result->segment_reads_list, &segment->reads_list_head);
-	mutex_unlock(&mi->mi_pending_reads_mutex);
+	list_add_rcu(&result->mi_reads_list, &mi->mi_reads_list_head);
+	list_add_rcu(&result->segment_reads_list, &segment->reads_list_head);
+
+	spin_unlock(&mi->pending_read_lock);
 
 	wake_up_all(&mi->mi_pending_reads_notif_wq);
 	return result;
+}
+
+static void free_pending_read_entry(struct rcu_head *entry)
+{
+	struct pending_read *read;
+
+	read = container_of(entry, struct pending_read, rcu);
+
+	kfree(read);
 }
 
 /* Notifies a given data file that pending read is completed. */
@@ -783,14 +870,17 @@ static void remove_pending_read(struct data_file *df, struct pending_read *read)
 
 	mi = df->df_mount_info;
 
-	mutex_lock(&mi->mi_pending_reads_mutex);
-	list_del(&read->mi_reads_list);
-	list_del(&read->segment_reads_list);
+	spin_lock(&mi->pending_read_lock);
+
+	list_del_rcu(&read->mi_reads_list);
+	list_del_rcu(&read->segment_reads_list);
 
 	mi->mi_pending_reads_count--;
-	mutex_unlock(&mi->mi_pending_reads_mutex);
 
-	kfree(read);
+	spin_unlock(&mi->pending_read_lock);
+
+	/* Don't free. Wait for readers */
+	call_rcu(&read->rcu, free_pending_read_entry);
 }
 
 static void notify_pending_reads(struct mount_info *mi,
@@ -800,13 +890,13 @@ static void notify_pending_reads(struct mount_info *mi,
 	struct pending_read *entry = NULL;
 
 	/* Notify pending reads waiting for this block. */
-	mutex_lock(&mi->mi_pending_reads_mutex);
-	list_for_each_entry(entry, &segment->reads_list_head,
+	rcu_read_lock();
+	list_for_each_entry_rcu(entry, &segment->reads_list_head,
 						segment_reads_list) {
 		if (entry->block_index == index)
 			set_read_done(entry);
 	}
-	mutex_unlock(&mi->mi_pending_reads_mutex);
+	rcu_read_unlock();
 	wake_up_all(&segment->new_data_arrival_wq);
 }
 
@@ -827,22 +917,21 @@ static int wait_for_data_block(struct data_file *df, int block_index,
 	if (block_index < 0 || block_index >= df->df_data_block_count)
 		return -EINVAL;
 
-	if (df->df_blockmap_off <= 0)
+	if (df->df_blockmap_off <= 0 || !df->df_mount_info)
 		return -ENODATA;
 
+	mi = df->df_mount_info;
 	segment = get_file_segment(df, block_index);
-	error = mutex_lock_interruptible(&segment->blockmap_mutex);
+
+	error = down_read_killable(&segment->rwsem);
 	if (error)
 		return error;
 
 	/* Look up the given block */
 	error = get_data_file_block(df, block_index, &block);
 
-	/* If it's not found, create a pending read */
-	if (!error && !is_data_block_present(&block) && timeout_ms != 0)
-		read = add_pending_read(df, block_index);
+	up_read(&segment->rwsem);
 
-	mutex_unlock(&segment->blockmap_mutex);
 	if (error)
 		return error;
 
@@ -850,17 +939,17 @@ static int wait_for_data_block(struct data_file *df, int block_index,
 	if (is_data_block_present(&block)) {
 		*res_block = block;
 		return 0;
+	} else {
+		/* If it's not found, create a pending read */
+		if (timeout_ms != 0) {
+			read = add_pending_read(df, block_index);
+			if (!read)
+				return -ENOMEM;
+		} else {
+			log_block_read(mi, &df->df_id, block_index);
+			return -ETIME;
+		}
 	}
-
-	mi = df->df_mount_info;
-
-	if (timeout_ms == 0) {
-		log_block_read(mi, &df->df_id, block_index);
-		return -ETIME;
-	}
-
-	if (!read)
-		return -ENOMEM;
 
 	/* Wait for notifications about block's arrival */
 	wait_res =
@@ -870,7 +959,6 @@ static int wait_for_data_block(struct data_file *df, int block_index,
 
 	/* Woke up, the pending read is no longer needed. */
 	remove_pending_read(df, read);
-	read = NULL;
 
 	if (wait_res == 0) {
 		/* Wait has timed out */
@@ -885,7 +973,7 @@ static int wait_for_data_block(struct data_file *df, int block_index,
 		return wait_res;
 	}
 
-	error = mutex_lock_interruptible(&segment->blockmap_mutex);
+	error = down_read_killable(&segment->rwsem);
 	if (error)
 		return error;
 
@@ -907,7 +995,7 @@ static int wait_for_data_block(struct data_file *df, int block_index,
 		}
 	}
 
-	mutex_unlock(&segment->blockmap_mutex);
+	up_read(&segment->rwsem);
 	return error;
 }
 
@@ -919,18 +1007,18 @@ ssize_t incfs_read_data_file_block(struct mem_range dst, struct file *f,
 	ssize_t result;
 	size_t bytes_to_read;
 	struct mount_info *mi = NULL;
-	struct backing_file_context *bfc = NULL;
+	struct file *bf = NULL;
 	struct data_file_block block = {};
 	struct data_file *df = get_incfs_data_file(f);
 
-	if (!dst.data || !df)
+	if (!dst.data || !df || !tmp.data)
 		return -EFAULT;
 
 	if (tmp.len < 2 * INCFS_DATA_FILE_BLOCK_SIZE)
 		return -ERANGE;
 
 	mi = df->df_mount_info;
-	bfc = df->df_backing_file_context;
+	bf = df->df_backing_file_context->bc_file;
 
 	result = wait_for_data_block(df, index, timeout_ms, &block);
 	if (result < 0)
@@ -939,20 +1027,20 @@ ssize_t incfs_read_data_file_block(struct mem_range dst, struct file *f,
 	pos = block.db_backing_file_data_offset;
 	if (block.db_comp_alg == COMPRESSION_NONE) {
 		bytes_to_read = min(dst.len, block.db_stored_size);
-		result = incfs_kread(bfc, dst.data, bytes_to_read, pos);
+		result = incfs_kread(bf, dst.data, bytes_to_read, pos);
 
 		/* Some data was read, but not enough */
 		if (result >= 0 && result != bytes_to_read)
 			result = -EIO;
 	} else {
 		bytes_to_read = min(tmp.len, block.db_stored_size);
-		result = incfs_kread(bfc, tmp.data, bytes_to_read, pos);
+		result = incfs_kread(bf, tmp.data, bytes_to_read, pos);
 		if (result == bytes_to_read) {
 			result =
 				decompress(range(tmp.data, bytes_to_read), dst);
 			if (result < 0) {
 				const char *name =
-				    bfc->bc_file->f_path.dentry->d_name.name;
+					bf->f_path.dentry->d_name.name;
 
 				pr_warn_once("incfs: Decompression error. %s",
 					     name);
@@ -964,7 +1052,7 @@ ssize_t incfs_read_data_file_block(struct mem_range dst, struct file *f,
 	}
 
 	if (result > 0) {
-		int err = validate_hash_tree(bfc, f, index, dst, tmp.data);
+		int err = validate_hash_tree(bf, f, index, dst, tmp.data);
 
 		if (err < 0)
 			result = err;
@@ -1002,17 +1090,24 @@ int incfs_process_new_data_block(struct data_file *df,
 	if (block->compression == COMPRESSION_LZ4)
 		flags |= INCFS_BLOCK_COMPRESSED_LZ4;
 
-	error = mutex_lock_interruptible(&segment->blockmap_mutex);
+	error = down_read_killable(&segment->rwsem);
 	if (error)
 		return error;
 
 	error = get_data_file_block(df, block->block_index, &existing_block);
+
+	up_read(&segment->rwsem);
+
 	if (error)
-		goto unlock;
+		return error;
 	if (is_data_block_present(&existing_block)) {
 		/* Block is already present, nothing to do here */
-		goto unlock;
+		return 0;
 	}
+
+	error = down_write_killable(&segment->rwsem);
+	if (error)
+		return error;
 
 	error = mutex_lock_interruptible(&bfc->bc_mutex);
 	if (!error) {
@@ -1024,16 +1119,17 @@ int incfs_process_new_data_block(struct data_file *df,
 	if (!error)
 		notify_pending_reads(mi, segment, block->block_index);
 
-unlock:
-	mutex_unlock(&segment->blockmap_mutex);
+	up_write(&segment->rwsem);
+
 	if (error)
-		pr_debug("%d error: %d\n", block->block_index, error);
+		pr_debug("incfs: %s %d error: %d\n", __func__,
+				block->block_index, error);
 	return error;
 }
 
 int incfs_read_file_signature(struct data_file *df, struct mem_range dst)
 {
-	struct backing_file_context *bfc = df->df_backing_file_context;
+	struct file *bf = df->df_backing_file_context->bc_file;
 	struct incfs_df_signature *sig;
 	int read_res = 0;
 
@@ -1047,7 +1143,7 @@ int incfs_read_file_signature(struct data_file *df, struct mem_range dst)
 	if (dst.len < sig->sig_size)
 		return -E2BIG;
 
-	read_res = incfs_kread(bfc, dst.data, sig->sig_size, sig->sig_offset);
+	read_res = incfs_kread(bf, dst.data, sig->sig_size, sig->sig_offset);
 
 	if (read_res < 0)
 		return read_res;
@@ -1173,7 +1269,7 @@ static int process_file_signature_md(struct incfs_file_signature *sg,
 		goto out;
 	}
 
-	read = incfs_kread(df->df_backing_file_context, buf,
+	read = incfs_kread(df->df_backing_file_context->bc_file, buf,
 			   signature->sig_size, signature->sig_offset);
 	if (read < 0) {
 		error = read;
@@ -1246,8 +1342,6 @@ int incfs_scan_metadata_chain(struct data_file *df)
 	handler->handle_file_attr = process_file_attr_md;
 	handler->handle_signature = process_file_signature_md;
 
-	pr_debug("incfs: Starting reading incfs-metadata records at offset %lld\n",
-		 handler->md_record_offset);
 	while (handler->md_record_offset > 0) {
 		error = incfs_read_next_metadata_record(bfc, handler);
 		if (error) {
@@ -1259,14 +1353,11 @@ int incfs_scan_metadata_chain(struct data_file *df)
 		records_count++;
 	}
 	if (error) {
-		pr_debug("incfs: Error %d after reading %d incfs-metadata records.\n",
+		pr_warn("incfs: Error %d after reading %d incfs-metadata records.\n",
 			 -error, records_count);
 		result = error;
-	} else {
-		pr_debug("incfs: Finished reading %d incfs-metadata records.\n",
-			 records_count);
+	} else
 		result = records_count;
-	}
 	mutex_unlock(&bfc->bc_mutex);
 
 	if (df->df_hash_tree) {
@@ -1292,19 +1383,24 @@ bool incfs_fresh_pending_reads_exist(struct mount_info *mi, int last_number)
 {
 	bool result = false;
 
-	mutex_lock(&mi->mi_pending_reads_mutex);
+	/*
+	 * We could probably get away with spin locks here;
+	 * if we use atomic_read() on both these variables.
+	 */
+	spin_lock(&mi->pending_read_lock);
 	result = (mi->mi_last_pending_read_number > last_number) &&
-		 (mi->mi_pending_reads_count > 0);
-	mutex_unlock(&mi->mi_pending_reads_mutex);
+		(mi->mi_pending_reads_count > 0);
+	spin_unlock(&mi->pending_read_lock);
 	return result;
 }
 
 int incfs_collect_pending_reads(struct mount_info *mi, int sn_lowerbound,
 				struct incfs_pending_read_info *reads,
-				int reads_size)
+				int reads_size, int *new_max_sn)
 {
 	int reported_reads = 0;
 	struct pending_read *entry = NULL;
+	bool result = false;
 
 	if (!mi)
 		return -EFAULT;
@@ -1312,13 +1408,19 @@ int incfs_collect_pending_reads(struct mount_info *mi, int sn_lowerbound,
 	if (reads_size <= 0)
 		return 0;
 
-	mutex_lock(&mi->mi_pending_reads_mutex);
+	spin_lock(&mi->pending_read_lock);
 
-	if (mi->mi_last_pending_read_number <= sn_lowerbound
-	    || mi->mi_pending_reads_count == 0)
-		goto unlock;
+	result = ((mi->mi_last_pending_read_number <= sn_lowerbound)
+		|| (mi->mi_pending_reads_count == 0));
 
-	list_for_each_entry(entry, &mi->mi_reads_list_head, mi_reads_list) {
+	spin_unlock(&mi->pending_read_lock);
+
+	if (result)
+		return reported_reads;
+
+	rcu_read_lock();
+
+	list_for_each_entry_rcu(entry, &mi->mi_reads_list_head, mi_reads_list) {
 		if (entry->serial_number <= sn_lowerbound)
 			continue;
 
@@ -1326,15 +1428,16 @@ int incfs_collect_pending_reads(struct mount_info *mi, int sn_lowerbound,
 		reads[reported_reads].block_index = entry->block_index;
 		reads[reported_reads].serial_number = entry->serial_number;
 		reads[reported_reads].timestamp_us = entry->timestamp_us;
-		/* reads[reported_reads].kind = INCFS_READ_KIND_PENDING; */
+
+		if (entry->serial_number > *new_max_sn)
+			*new_max_sn = entry->serial_number;
 
 		reported_reads++;
 		if (reported_reads >= reads_size)
 			break;
 	}
 
-unlock:
-	mutex_unlock(&mi->mi_pending_reads_mutex);
+	rcu_read_unlock();
 
 	return reported_reads;
 }
