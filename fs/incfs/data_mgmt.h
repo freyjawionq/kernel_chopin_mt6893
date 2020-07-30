@@ -10,9 +10,11 @@
 #include <linux/types.h>
 #include <linux/mutex.h>
 #include <linux/spinlock.h>
+#include <linux/rcupdate.h>
 #include <linux/completion.h>
 #include <linux/wait.h>
 #include <crypto/hash.h>
+#include <linux/rwsem.h>
 
 #include <uapi/linux/incrementalfs.h>
 
@@ -32,6 +34,7 @@ struct full_record {
 	u32 block_index : 30;
 	incfs_uuid_t file_id;
 	u64 absolute_ts_us;
+	uid_t uid;
 } __packed; /* 28 bytes */
 
 struct same_file_record {
@@ -101,6 +104,7 @@ struct mount_options {
 	unsigned int read_log_wakeup_count;
 	bool no_backing_file_cache;
 	bool no_backing_file_readahead;
+	bool report_uid;
 };
 
 struct mount_info {
@@ -109,9 +113,6 @@ struct mount_info {
 	struct path mi_backing_dir_path;
 
 	struct dentry *mi_index_dir;
-	/* For stacking mounts, if true, this indicates if the index dir needs
-	 * to be freed for this SB otherwise it was created by lower level SB */
-	bool mi_index_free;
 
 	const struct cred *mi_owner;
 
@@ -126,13 +127,13 @@ struct mount_info {
 	wait_queue_head_t mi_pending_reads_notif_wq;
 
 	/*
-	 * Protects:
+	 * Protects - RCU safe:
 	 *  - reads_list_head
 	 *  - mi_pending_reads_count
 	 *  - mi_last_pending_read_number
 	 *  - data_file_segment.reads_list_head
 	 */
-	struct mutex mi_pending_reads_mutex;
+	spinlock_t pending_read_lock;
 
 	/* List of active pending_read objects */
 	struct list_head mi_reads_list_head;
@@ -175,17 +176,20 @@ struct pending_read {
 
 	int serial_number;
 
+	uid_t uid;
+
 	struct list_head mi_reads_list;
 
 	struct list_head segment_reads_list;
+
+	struct rcu_head rcu;
 };
 
 struct data_file_segment {
 	wait_queue_head_t new_data_arrival_wq;
 
 	/* Protects reads and writes from the blockmap */
-	/* Good candidate for read/write mutex */
-	struct mutex blockmap_mutex;
+	struct rw_semaphore rwsem;
 
 	/* List of active pending_read objects belonging to this segment */
 	/* Protected by mount_info.pending_reads_mutex */
@@ -308,11 +312,13 @@ bool incfs_fresh_pending_reads_exist(struct mount_info *mi, int last_number);
  */
 int incfs_collect_pending_reads(struct mount_info *mi, int sn_lowerbound,
 				struct incfs_pending_read_info *reads,
-				int reads_size);
+				struct incfs_pending_read_info2 *reads2,
+				int reads_size, int *new_max_sn);
 
 int incfs_collect_logged_reads(struct mount_info *mi,
 			       struct read_log_state *start_state,
 			       struct incfs_pending_read_info *reads,
+			       struct incfs_pending_read_info2 *reads2,
 			       int reads_size);
 struct read_log_state incfs_get_log_state(struct mount_info *mi);
 int incfs_get_uncollected_logs_count(struct mount_info *mi,
