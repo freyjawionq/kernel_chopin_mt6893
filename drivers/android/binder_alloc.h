@@ -52,7 +52,8 @@ struct binder_buffer {
 	unsigned free:1;
 	unsigned allow_user_free:1;
 	unsigned async_transaction:1;
-	unsigned debug_id:29;
+	unsigned oneway_spam_suspect:1;
+	unsigned debug_id:28;
 
 	struct binder_transaction *transaction;
 
@@ -114,6 +115,7 @@ struct binder_alloc {
 	uint32_t buffer_free;
 	int pid;
 	size_t pages_high;
+	bool oneway_spam_detected;
 };
 
 #ifdef CONFIG_ANDROID_BINDER_IPC_SELFTEST
@@ -185,4 +187,3 @@ void binder_alloc_copy_from_buffer(struct binder_alloc *alloc,
 				   size_t bytes);
 
 #endif /* _LINUX_BINDER_ALLOC_H */
-
