@@ -82,7 +82,6 @@ struct fsverity_formatted_digest {
 	__le16 digest_size;
 	__u8 digest[];
 };
-
 #define FS_VERITY_METADATA_TYPE_MERKLE_TREE	1
 #define FS_VERITY_METADATA_TYPE_DESCRIPTOR	2
 #define FS_VERITY_METADATA_TYPE_SIGNATURE	3
