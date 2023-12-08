@@ -4117,7 +4117,14 @@ static bool sort_page(struct lruvec *lruvec, struct page *page, int tier_idx)
 		return true;
 	}
 
-	if (tier > tier_idx) {
+/* promoted */
+	if (gen != lru_gen_from_seq(lrugen->min_seq[type])) {
+		list_move(&page->lru, &lrugen->lists[gen][type][zone]);
+		return true;
+	}
+
+	/* protected */
+	if (tier > tier_idx || refs == BIT(LRU_REFS_WIDTH)) {
 		int hist = lru_hist_from_seq(lrugen->min_seq[type]);
 
 		gen = page_inc_gen(lruvec, page, false);

@@ -299,11 +299,16 @@ void lru_gen_refault(struct page *page, void *shadow)
 	 * Count the following two cases as stalls:
 	 * 1. For pages accessed through page tables, hotter pages pushed out
 	 *    hot pages which refaulted immediately.
-	 * 2. For pages accessed through file descriptors, numbers of accesses
-	 *    might have been beyond the limit.
+* 2. For pages accessed multiple times through file descriptors,
+	 *    they would have been protected by sort_page().
 	 */
-	if (lru_gen_in_fault() || refs + workingset == BIT(LRU_REFS_WIDTH)) {
+	if (lru_gen_in_fault() || refs >= BIT(LRU_REFS_WIDTH) - 1) {
 		SetPageWorkingset(page);
+		/* 4.14 compat: equivalent to set_mask_bits(&page->flags, 0,
+		 * LRU_REFS_MASK | BIT(PG_workingset)). Clear refs count to
+		 * match candidate semantics; race with isolation is benign.
+		 */
+		page->flags &= ~LRU_REFS_MASK;
 		mod_lruvec_state(lruvec, WORKINGSET_RESTORE, delta);
 	}
 unlock:
