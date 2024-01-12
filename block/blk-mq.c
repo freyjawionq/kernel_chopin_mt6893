@@ -1034,6 +1034,14 @@ static bool blk_mq_dispatch_wait_add(struct blk_mq_hw_ctx *hctx)
 	 * and unlock the bit.
 	 */
 	add_wait_queue(&ws->wait, &hctx->dispatch_wait);
+
+	/*
+	 * Order adding us to the wait queue and checking for driver tags.
+	 * This pairs with sbitmap_queue_clear() waking waiters after clearing
+	 * tag bits.
+	 */
+	smp_mb();
+
 	return true;
 }
 
