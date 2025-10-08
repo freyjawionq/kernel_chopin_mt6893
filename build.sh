@@ -7,9 +7,7 @@ source ~/.bashrc && source ~/.profile
 export LC_ALL=C && export USE_CCACHE=1
 ccache -M 100G
 export ARCH=arm64
-export KBUILD_BUILD_HOST=Laptop-MaoYihao
-export KBUILD_BUILD_USER="maoyihao"
-export LOCALVERSION="-Ciallo~(∠・ω< )"
+export LOCALVERSION='-Ciallo~'
 git clone --depth=1  https://gitlab.com/LeCmnGend/proton-clang.git -b clang-13 clang
 
  if ! [ -d "out" ]; then
