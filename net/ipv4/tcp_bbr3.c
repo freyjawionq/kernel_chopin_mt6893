@@ -188,23 +188,23 @@ struct bbr3_context {
 };
 
 /* Window length of min_rtt filter (in sec): */
-static const u32 bbr3_min_rtt_win_sec = 10;
+static u32 bbr3_min_rtt_win_sec = 10;
 /* Minimum time (in ms) spent at bbr3_cwnd_min_target in BBR3_PROBE_RTT mode: */
-static const u32 bbr3_probe_rtt_mode_ms = 200;
+static u32 bbr3_probe_rtt_mode_ms = 200;
 /* Window length of probe_rtt_min_us filter (in ms), and consequently the
  * typical interval between PROBE_RTT mode entries. The default is 5000ms.
  * Note that bbr3_probe_rtt_win_ms must be <= bbr3_min_rtt_win_sec * MSEC_PER_SEC
  */
-static const u32 bbr3_probe_rtt_win_ms = 5000;
+static u32 bbr3_probe_rtt_win_ms = 5000;
 /* Proportion of cwnd to estimated BDP in PROBE_RTT, in units of BBR3_UNIT: */
-static const u32 bbr3_probe_rtt_cwnd_gain = BBR3_UNIT * 1 / 2;
+static u32 bbr3_probe_rtt_cwnd_gain = BBR3_UNIT * 1 / 2;
 
 /* Use min_rtt to help adapt TSO burst size, with smaller min_rtt resulting
  * in bigger TSO bursts. We cut the RTT-based allowance in half
  * for every 2^9 usec (aka 512 us) of RTT, so that the RTT-based allowance
  * is below 1500 bytes after 6 * ~500 usec = 3ms.
  */
-static const u32 bbr3_tso_rtt_shift = 9;
+static u32 bbr3_tso_rtt_shift = 9;
 
 /* Pace at ~1% below estimated bw, on average, to reduce queue at bottleneck.
  * In order to help drive the network toward lower queues and low latency while
@@ -212,24 +212,24 @@ static const u32 bbr3_tso_rtt_shift = 9;
  * lower than the estimated bandwidth. This is an important aspect of the
  * design.
  */
-static const int bbr3_pacing_margin_percent = 1;
+static int bbr3_pacing_margin_percent = 1;
 
 /* We use a startup_pacing_gain of 4*ln(2) because it's the smallest value
  * that will allow a smoothly increasing pacing rate that will double each RTT
  * and send the same number of packets per RTT that an un-paced, slow-starting
  * Reno or CUBIC flow would:
  */
-static const int bbr3_startup_pacing_gain = BBR3_UNIT * 277 / 100 + 1;
+static int bbr3_startup_pacing_gain = BBR3_UNIT * 277 / 100 + 1;
 /* The gain for deriving startup cwnd: */
-static const int bbr3_startup_cwnd_gain = BBR3_UNIT * 2;
+static int bbr3_startup_cwnd_gain = BBR3_UNIT * 2;
 /* The pacing gain in BBR3_DRAIN is calculated to typically drain
  * the queue created in BBR3_STARTUP in a single round:
  */
-static const int bbr3_drain_gain = BBR3_UNIT * 1000 / 2885;
+static int bbr3_drain_gain = BBR3_UNIT * 1000 / 2885;
 /* The gain for deriving steady-state cwnd tolerates delayed/stretched ACKs: */
-static const int bbr3_cwnd_gain  = BBR3_UNIT * 2;
+static int bbr3_cwnd_gain  = BBR3_UNIT * 2;
 /* The pacing_gain values for the PROBE_BW gain cycle, to discover/share bw: */
-static const int bbr3_pacing_gain[] = {
+static int bbr3_pacing_gain[] = {
 	BBR3_UNIT * 5 / 4,	/* UP: probe for more available bw */
 	BBR3_UNIT * 91 / 100,	/* DOWN: drain queue and/or yield bw */
 	BBR3_UNIT,		/* CRUISE: try to use pipe w/ some headroom */
@@ -246,88 +246,88 @@ enum bbr3_pacing_gain_phase {
  * smooth functioning, a sliding window protocol ACKing every other packet
  * needs at least 4 packets in flight:
  */
-static const u32 bbr3_cwnd_min_target = 4;
+static u32 bbr3_cwnd_min_target = 4;
 
 /* To estimate if BBR3_STARTUP or BBR3_BW_PROBE_UP has filled pipe... */
 /* If bw has increased significantly (1.25x), there may be more bw available: */
-static const u32 bbr3_full_bw_thresh = BBR3_UNIT * 5 / 4;
+static u32 bbr3_full_bw_thresh = BBR3_UNIT * 5 / 4;
 /* But after 3 rounds w/o significant bw growth, estimate pipe is full: */
-static const u32 bbr3_full_bw_cnt = 3;
+static u32 bbr3_full_bw_cnt = 3;
 
 /* Gain factor for adding extra_acked to target cwnd: */
-static const int bbr3_extra_acked_gain = BBR3_UNIT;
+static int bbr3_extra_acked_gain = BBR3_UNIT;
 /* Window length of extra_acked window. */
-static const u32 bbr3_extra_acked_win_rtts = 5;
+static u32 bbr3_extra_acked_win_rtts = 5;
 /* Max allowed val for ack_epoch_acked, after which sampling epoch is reset */
-static const u32 bbr3_ack_epoch_acked_reset_thresh = 1U << 20;
+static u32 bbr3_ack_epoch_acked_reset_thresh = 1U << 20;
 /* Time period for clamping cwnd increment due to ack aggregation */
-static const u32 bbr3_extra_acked_max_us = 100 * 1000;
+static u32 bbr3_extra_acked_max_us = 100 * 1000;
 
 /* Flags to control BBR ECN-related behavior... */
 
 /* Ensure ACKs only ACK packets with consistent ECN CE status? */
-static const bool bbr3_precise_ece_ack = true;
+static bool bbr3_precise_ece_ack = true;
 
 /* Max RTT (in usec) at which to use sender-side ECN logic.
  * Disabled when 0 (ECN allowed at any RTT).
  */
-static const u32 bbr3_ecn_max_rtt_us = 5000;
+static u32 bbr3_ecn_max_rtt_us = 5000;
 
 /* On losses, scale down inflight and pacing rate by beta scaled by BBR3_SCALE.
  * No loss response when 0.
  */
-static const u32 bbr3_beta = BBR3_UNIT * 30 / 100;
+static u32 bbr3_beta = BBR3_UNIT * 30 / 100;
 
 /* Gain factor for ECN mark ratio samples, scaled by BBR3_SCALE (1/16 = 6.25%) */
-static const u32 bbr3_ecn_alpha_gain = BBR3_UNIT * 1 / 16;
+static u32 bbr3_ecn_alpha_gain = BBR3_UNIT * 1 / 16;
 
 /* The initial value for ecn_alpha; 1.0 allows a flow to respond quickly
  * to congestion if the bottleneck is congested when the flow starts up.
  */
-static const u32 bbr3_ecn_alpha_init = BBR3_UNIT;
+static u32 bbr3_ecn_alpha_init = BBR3_UNIT;
 
 /* On ECN, cut inflight_lo to (1 - ecn_factor * ecn_alpha) scaled by BBR3_SCALE.
  * No ECN based bounding when 0.
  */
-static const u32 bbr3_ecn_factor = BBR3_UNIT * 1 / 3;	 /* 1/3 = 33% */
+static u32 bbr3_ecn_factor = BBR3_UNIT * 1 / 3;	 /* 1/3 = 33% */
 
 /* Estimate bw probing has gone too far if CE ratio exceeds this threshold.
  * Scaled by BBR3_SCALE. Disabled when 0.
  */
-static const u32 bbr3_ecn_thresh = BBR3_UNIT * 1 / 2;  /* 1/2 = 50% */
+static u32 bbr3_ecn_thresh = BBR3_UNIT * 1 / 2;  /* 1/2 = 50% */
 
 /* If non-zero, if in a cycle with no losses but some ECN marks, after ECN
  * clears then make the first round's increment to inflight_hi the following
  * fraction of inflight_hi.
  */
-static const u32 bbr3_ecn_reprobe_gain = BBR3_UNIT * 1 / 2;
+static u32 bbr3_ecn_reprobe_gain = BBR3_UNIT * 1 / 2;
 
 /* Estimate bw probing has gone too far if loss rate exceeds this level. */
-static const u32 bbr3_loss_thresh = BBR3_UNIT * 2 / 100;  /* 2% loss */
+static u32 bbr3_loss_thresh = BBR3_UNIT * 2 / 100;  /* 2% loss */
 
 /* Slow down for a packet loss recovered by TLP? */
-static const bool bbr3_loss_probe_recovery = true;
+static bool bbr3_loss_probe_recovery = true;
 
 /* Exit STARTUP if number of loss marking events in a Recovery round is >= N,
  * and loss rate is higher than bbr3_loss_thresh.
  * Disabled if 0.
  */
-static const u32 bbr3_full_loss_cnt = 6;
+static u32 bbr3_full_loss_cnt = 6;
 
 /* Exit STARTUP if number of round trips with ECN mark rate above ecn_thresh
  * meets this count.
  */
-static const u32 bbr3_full_ecn_cnt = 2;
+static u32 bbr3_full_ecn_cnt = 2;
 
 /* Fraction of unutilized headroom to try to leave in path upon high loss. */
-static const u32 bbr3_inflight_headroom = BBR3_UNIT * 15 / 100;
+static u32 bbr3_inflight_headroom = BBR3_UNIT * 15 / 100;
 
 /* How much do we increase cwnd_gain when probing for bandwidth in
  * BBR3_BW_PROBE_UP? This specifies the increment in units of
  * BBR3_UNIT/4. The default is 1, meaning 0.25.
  * The min value is 0 (meaning 0.0); max is 3 (meaning 0.75).
  */
-static const u32 bbr3_bw_probe_cwnd_gain = 1;
+static u32 bbr3_bw_probe_cwnd_gain = 1;
 
 /* Max number of packet-timed rounds to wait before probing for bandwidth.  If
  * we want to tolerate 1% random loss per round, and not have this cut our
@@ -336,26 +336,26 @@ static const u32 bbr3_bw_probe_cwnd_gain = 1;
  * We aim to be fair with Reno/CUBIC up to a BDP of at least:
  *  BDP = 25Mbps * .030sec /(1514bytes) = 61.9 packets
  */
-static const u32 bbr3_bw_probe_max_rounds = 63;
+static u32 bbr3_bw_probe_max_rounds = 63;
 
 /* Max amount of randomness to inject in round counting for Reno-coexistence.
  */
-static const u32 bbr3_bw_probe_rand_rounds = 2;
+static u32 bbr3_bw_probe_rand_rounds = 2;
 
 /* Use BBR-native probe time scale starting at this many usec.
  * We aim to be fair with Reno/CUBIC up to an inter-loss time epoch of at least:
  *  BDP*RTT = 25Mbps * .030sec /(1514bytes) * 0.030sec = 1.9 secs
  */
-static const u32 bbr3_bw_probe_base_us = 2 * USEC_PER_SEC;  /* 2 secs */
+static u32 bbr3_bw_probe_base_us = 2 * USEC_PER_SEC;  /* 2 secs */
 
 /* Use BBR-native probes spread over this many usec: */
-static const u32 bbr3_bw_probe_rand_us = 1 * USEC_PER_SEC;  /* 1 secs */
+static u32 bbr3_bw_probe_rand_us = 1 * USEC_PER_SEC;  /* 1 secs */
 
 /* Use fast path if app-limited, no loss/ECN, and target cwnd was reached? */
-static const bool bbr3_fast_path = true;
+static bool bbr3_fast_path = true;
 
 /* Use fast ack mode? */
-static const bool bbr3_fast_ack_mode = true;
+static bool bbr3_fast_ack_mode = true;
 
 static u32 bbr3_max_bw(const struct sock *sk);
 static u32 bbr3_bw(const struct sock *sk);
@@ -2364,6 +2364,45 @@ static void __exit bbr3_unregister(void)
 
 module_init(bbr3_register);
 module_exit(bbr3_unregister);
+
+module_param_named(min_rtt_win_sec, bbr3_min_rtt_win_sec, uint, 0644);
+module_param_named(probe_rtt_mode_ms, bbr3_probe_rtt_mode_ms, uint, 0644);
+module_param_named(probe_rtt_win_ms, bbr3_probe_rtt_win_ms, uint, 0644);
+module_param_named(probe_rtt_cwnd_gain, bbr3_probe_rtt_cwnd_gain, uint, 0644);
+module_param_named(tso_rtt_shift, bbr3_tso_rtt_shift, uint, 0644);
+module_param_named(pacing_margin_percent, bbr3_pacing_margin_percent, int, 0644);
+module_param_named(startup_pacing_gain, bbr3_startup_pacing_gain, int, 0644);
+module_param_named(startup_cwnd_gain, bbr3_startup_cwnd_gain, int, 0644);
+module_param_named(drain_gain, bbr3_drain_gain, int, 0644);
+module_param_named(cwnd_gain, bbr3_cwnd_gain, int, 0644);
+module_param_array_named(pacing_gain, bbr3_pacing_gain, int, NULL, 0644);
+module_param_named(cwnd_min_target, bbr3_cwnd_min_target, uint, 0644);
+module_param_named(full_bw_thresh, bbr3_full_bw_thresh, uint, 0644);
+module_param_named(full_bw_cnt, bbr3_full_bw_cnt, uint, 0644);
+module_param_named(extra_acked_gain, bbr3_extra_acked_gain, int, 0644);
+module_param_named(extra_acked_win_rtts, bbr3_extra_acked_win_rtts, uint, 0644);
+module_param_named(ack_epoch_acked_reset_thresh, bbr3_ack_epoch_acked_reset_thresh, uint, 0644);
+module_param_named(extra_acked_max_us, bbr3_extra_acked_max_us, uint, 0644);
+module_param_named(precise_ece_ack, bbr3_precise_ece_ack, bool, 0644);
+module_param_named(ecn_max_rtt_us, bbr3_ecn_max_rtt_us, uint, 0644);
+module_param_named(beta, bbr3_beta, uint, 0644);
+module_param_named(ecn_alpha_gain, bbr3_ecn_alpha_gain, uint, 0644);
+module_param_named(ecn_alpha_init, bbr3_ecn_alpha_init, uint, 0644);
+module_param_named(ecn_factor, bbr3_ecn_factor, uint, 0644);
+module_param_named(ecn_thresh, bbr3_ecn_thresh, uint, 0644);
+module_param_named(ecn_reprobe_gain, bbr3_ecn_reprobe_gain, uint, 0644);
+module_param_named(loss_thresh, bbr3_loss_thresh, uint, 0644);
+module_param_named(loss_probe_recovery, bbr3_loss_probe_recovery, bool, 0644);
+module_param_named(full_loss_cnt, bbr3_full_loss_cnt, uint, 0644);
+module_param_named(full_ecn_cnt, bbr3_full_ecn_cnt, uint, 0644);
+module_param_named(inflight_headroom, bbr3_inflight_headroom, uint, 0644);
+module_param_named(bw_probe_cwnd_gain, bbr3_bw_probe_cwnd_gain, uint, 0644);
+module_param_named(bw_probe_max_rounds, bbr3_bw_probe_max_rounds, uint, 0644);
+module_param_named(bw_probe_rand_rounds, bbr3_bw_probe_rand_rounds, uint, 0644);
+module_param_named(bw_probe_base_us, bbr3_bw_probe_base_us, uint, 0644);
+module_param_named(bw_probe_rand_us, bbr3_bw_probe_rand_us, uint, 0644);
+module_param_named(fast_path, bbr3_fast_path, bool, 0644);
+module_param_named(fast_ack_mode, bbr3_fast_ack_mode, bool, 0644);
 
 MODULE_AUTHOR("Van Jacobson <vanj@google.com>");
 MODULE_AUTHOR("Neal Cardwell <ncardwell@google.com>");
