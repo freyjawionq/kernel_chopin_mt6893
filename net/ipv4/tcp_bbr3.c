@@ -430,12 +430,10 @@ static u64 bbr3_rate_bytes_per_sec(struct sock *sk, u64 rate, int gain,
 	return rate;
 }
 
-#if 0
 static u64 bbr3_bw_bytes_per_sec(struct sock *sk, u64 rate)
 {
 	return bbr3_rate_bytes_per_sec(sk, rate, BBR3_UNIT, 0);
 }
-#endif
 
 /* Convert a BBR bw and gain factor to a pacing rate in bytes per second. */
 static unsigned long bbr3_bw_to_pacing_rate(struct sock *sk, u32 bw, int gain)
@@ -2268,7 +2266,6 @@ enum tcp_bbr3_phase {
 	BBR3_PHASE_PROBE_BW_REFILL	= 7,
 };
 
-#if 0
 static enum tcp_bbr3_phase bbr3_get_phase(struct bbr3 *bbr)
 {
 	switch (bbr->mode) {
@@ -2300,10 +2297,35 @@ static enum tcp_bbr3_phase bbr3_get_phase(struct bbr3 *bbr)
 static size_t bbr3_get_info(struct sock *sk, u32 ext, int *attr,
 			    union tcp_cc_info *info)
 {
-	/* Temporarily disabled for 4.14 bring-up */
+	if (ext & (1 << (INET_DIAG_BBRINFO - 1)) ||
+	    ext & (1 << (INET_DIAG_VEGASINFO - 1))) {
+		struct bbr3 *bbr = inet_csk_ca(sk);
+		u64 bw = bbr3_bw_bytes_per_sec(sk, bbr3_bw(sk));
+		u64 bw_hi = bbr3_bw_bytes_per_sec(sk, bbr3_max_bw(sk));
+		u64 bw_lo = bbr->bw_lo == ~0U ?
+			~0ULL : bbr3_bw_bytes_per_sec(sk, bbr->bw_lo);
+
+		memset(&info->bbr2, 0, sizeof(info->bbr2));
+		info->bbr2.bbr_bw_lsb           = (u32)bw;
+		info->bbr2.bbr_bw_msb           = (u32)(bw >> 32);
+		info->bbr2.bbr_min_rtt          = bbr->min_rtt_us;
+		info->bbr2.bbr_pacing_gain      = bbr->pacing_gain;
+		info->bbr2.bbr_cwnd_gain        = bbr->cwnd_gain;
+		info->bbr2.bbr_bw_hi_lsb        = (u32)bw_hi;
+		info->bbr2.bbr_bw_hi_msb        = (u32)(bw_hi >> 32);
+		info->bbr2.bbr_bw_lo_lsb        = (u32)bw_lo;
+		info->bbr2.bbr_bw_lo_msb        = (u32)(bw_lo >> 32);
+		info->bbr2.bbr_mode             = bbr->mode;
+		info->bbr2.bbr_phase            = (__u8)bbr3_get_phase(bbr);
+		info->bbr2.bbr_version          = (__u8)3;
+		info->bbr2.bbr_inflight_lo      = bbr->inflight_lo;
+		info->bbr2.bbr_inflight_hi      = bbr->inflight_hi;
+		info->bbr2.bbr_extra_acked      = bbr3_extra_acked(sk);
+		*attr = INET_DIAG_BBRINFO;
+		return sizeof(info->bbr2);
+	}
 	return 0;
 }
-#endif
 
 
 static void bbr3_set_state(struct sock *sk, u8 new_state)
@@ -2346,7 +2368,7 @@ static struct tcp_congestion_ops tcp_bbr3_cong_ops __read_mostly = {
 	.cwnd_event	= bbr3_cwnd_event,
 	.ssthresh	= bbr3_ssthresh,
 	.tso_segs	= bbr3_tso_segs,
-	.get_info	= NULL,
+	.get_info	= bbr3_get_info,
 	.set_state	= bbr3_set_state,
 };
 
