@@ -441,10 +441,12 @@ static u64 bbr3_rate_bytes_per_sec(struct sock *sk, u64 rate, int gain,
 	return rate;
 }
 
+#if 0
 static u64 bbr3_bw_bytes_per_sec(struct sock *sk, u64 rate)
 {
 	return bbr3_rate_bytes_per_sec(sk, rate, BBR3_UNIT, 0);
 }
+#endif
 
 /* Convert a BBR bw and gain factor to a pacing rate in bytes per second. */
 static unsigned long bbr3_bw_to_pacing_rate(struct sock *sk, u32 bw, int gain)
@@ -2216,7 +2218,6 @@ static void bbr3_skb_marked_lost(struct sock *sk,
 
 static void bbr3_run_loss_probe_recovery(struct sock *sk)
 {
-	struct tcp_sock *tp = tcp_sk(sk);
 	struct bbr3 *bbr = inet_csk_ca(sk);
 	struct rate_sample rs = {0};
 
@@ -2277,6 +2278,7 @@ enum tcp_bbr3_phase {
 	BBR3_PHASE_PROBE_BW_REFILL	= 7,
 };
 
+#if 0
 static enum tcp_bbr3_phase bbr3_get_phase(struct bbr3 *bbr)
 {
 	switch (bbr->mode) {
@@ -2311,6 +2313,7 @@ static size_t bbr3_get_info(struct sock *sk, u32 ext, int *attr,
 	/* Temporarily disabled for 4.14 bring-up */
 	return 0;
 }
+#endif
 
 
 static void bbr3_set_state(struct sock *sk, u8 new_state)
