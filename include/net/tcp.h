@@ -393,10 +393,13 @@ static inline void tcp_dec_quickack_mode(struct sock *sk,
 	}
 }
 
-#define	TCP_ECN_OK		1
-#define	TCP_ECN_QUEUE_CWR	2
-#define	TCP_ECN_DEMAND_CWR	4
-#define	TCP_ECN_SEEN		8
+#define     TCP_ECN_OK              1
+#define     TCP_ECN_QUEUE_CWR       2
+#define     TCP_ECN_DEMAND_CWR      4
+#define     TCP_ECN_SEEN            8
+#define     TCP_ECN_LOW             16
+#define     TCP_ECN_ECT_PERMANENT   32
+
 
 enum tcp_tw_status {
 	TCP_TW_SUCCESS = 0,
@@ -985,6 +988,7 @@ enum tcp_ca_event {
 	CA_EVENT_LOSS,		/* loss timeout */
 	CA_EVENT_ECN_NO_CE,	/* ECT set, but not CE marked */
 	CA_EVENT_ECN_IS_CE,	/* received CE marked IP packet */
+	CA_EVENT_TLP_RECOVERY,	/* a lost segment was repaired by TLP probe */
 };
 
 /* Information about inbound ACK, passed to cong_ops->in_ack_event() */
@@ -1047,6 +1051,7 @@ struct rate_sample {
 	bool is_retrans;	/* is sample from retransmission? */
 	bool is_ack_delayed;	/* is this (likely) a delayed ACK? */
 	bool is_ece;		/* did this ACK have ECN marked? */
+	bool is_acking_tlp_retrans_seq; /* ACKed a TLP retransmit sequence? */
 };
 
 struct tcp_congestion_ops {
