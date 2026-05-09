@@ -74,17 +74,6 @@
 #define tcp_snd_cwnd_set(tp, val) (tp->snd_cwnd = (val))
 #endif
 
-/* Compatibility for 4.14 kernel */
-#ifndef TCP_ECN_LOW
-#define TCP_ECN_LOW 0
-#endif
-#ifndef TCP_ECN_ECT_PERMANENT
-#define TCP_ECN_ECT_PERMANENT 0
-#endif
-#ifndef CA_EVENT_TLP_RECOVERY
-#define CA_EVENT_TLP_RECOVERY 999
-#endif
-
 #define get_random_u32_below(n) prandom_u32_max(n)
 
 #define BBR3_VERSION		3
@@ -1480,7 +1469,7 @@ static void bbr3_advance_latest_delivery_signals(
 	 * that a TLP retransmit plugged a tail loss, we'll want to remember
 	 * how much data the path delivered before the tail loss.
 	 */
-	if (bbr->loss_round_start && 1) {
+	if (bbr->loss_round_start && !rs->is_acking_tlp_retrans_seq) {
 		bbr->bw_latest = ctx->sample_bw;
 		bbr->inflight_latest = rs->delivered;
 	}
@@ -2231,8 +2220,7 @@ static void bbr3_run_loss_probe_recovery(struct sock *sk)
 	 */
 	rs.lost = 1;	/* TLP probe repaired loss of a single segment */
 	rs.tx_in_flight = bbr->inflight_latest + rs.lost;
-	/* rs.is_app_limited = tp->tlp_orig_data_app_limited; - missing in 4.14 */
-	rs.is_app_limited = false;
+	rs.is_app_limited = tp->tlp_orig_data_app_limited;
 	if (bbr3_is_inflight_too_high(sk, &rs))
 		bbr3_handle_inflight_too_high(sk, &rs);
 }
