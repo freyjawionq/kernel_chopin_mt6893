@@ -1366,6 +1366,9 @@ static int __tcp_transmit_skb(struct sock *sk, struct sk_buff *skb,
 		tcp_enter_cwr(sk);
 		err = net_xmit_eval(err);
 	}
+	if (unlikely(err) && tcp_needs_internal_pacing(sk)) {
+		hrtimer_cancel(&tp->pacing_timer);
+	}
 	if (!err && oskb) {
 		oskb->skb_mstamp = tp->tcp_mstamp;
 		tcp_rate_skb_sent(sk, oskb);
