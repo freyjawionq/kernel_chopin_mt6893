@@ -713,6 +713,18 @@ config TCP_CONG_BBR2
 	using either TCP internal pacing or the fq ("Fair Queue") pacing packet
 	scheduler.
 
+config TCP_CONG_BBR3
+	tristate "BBRv3 TCP"
+	default n
+	help
+	  BBRv3 TCP congestion control as separate algorithm "bbr3".
+	  BBR is a model-based congestion control algorithm that aims for low queues,
+	  low loss, and (bounded) Reno/CUBIC coexistence. To maintain a model of the
+	  network path, it uses measurements of bandwidth and RTT, as well as (if they
+	  occur) packet loss and/or shallow-threshold ECN signals. Note that although
+	  it can use ECN or loss signals explicitly, it does not require either; it
+	  can bound its in-flight data based on its estimate of the BDP.
+
 choice
 	prompt "Default TCP congestion control"
 	default DEFAULT_BBR2
@@ -768,6 +780,11 @@ config TCP_CONG_CUBIC
 	default y
 
 config TCP_CONG_BBR2
+	tristate
+	depends on !TCP_CONG_ADVANCED
+	default y
+
+config TCP_CONG_BBR3
 	tristate
 	depends on !TCP_CONG_ADVANCED
 	default y
