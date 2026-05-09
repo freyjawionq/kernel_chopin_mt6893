@@ -64,7 +64,6 @@
 #include <linux/random.h>
 #include <linux/win_minmax.h>
 
-#include <trace/events/tcp.h>
 #include "tcp_dctcp.h"
 
 #ifndef tcp_snd_cwnd
@@ -74,6 +73,19 @@
 #ifndef tcp_snd_cwnd_set
 #define tcp_snd_cwnd_set(tp, val) (tp->snd_cwnd = (val))
 #endif
+
+/* Compatibility for 4.14 kernel */
+#ifndef TCP_ECN_LOW
+#define TCP_ECN_LOW 0
+#endif
+#ifndef TCP_ECN_ECT_PERMANENT
+#define TCP_ECN_ECT_PERMANENT 0
+#endif
+#ifndef CA_EVENT_TLP_RECOVERY
+#define CA_EVENT_TLP_RECOVERY 999
+#endif
+
+#define get_random_u32_below(n) prandom_u32_max(n)
 
 #define BBR3_VERSION		3
 
@@ -1224,10 +1236,7 @@ static u32 bbr3_inflight_hi_from_lost_skb(const struct sock *sk,
 	/* How much data was in flight before this skb? */
 	inflight_prev = rs->tx_in_flight - pcount;
 	if (inflight_prev < 0) {
-		WARN_ONCE(tcp_skb_tx_in_flight_is_suspicious(
-				  pcount,
-				  TCP_SKB_CB(skb)->sacked,
-				  rs->tx_in_flight),
+		WARN_ONCE(1,
 			  "tx_in_flight: %u pcount: %u reneg: %u",
 			  rs->tx_in_flight, pcount, tcp_sk(sk)->is_sack_reneg);
 		return ~0U;
@@ -1469,7 +1478,7 @@ static void bbr3_advance_latest_delivery_signals(
 	 * that a TLP retransmit plugged a tail loss, we'll want to remember
 	 * how much data the path delivered before the tail loss.
 	 */
-	if (bbr->loss_round_start && !rs->is_acking_tlp_retrans_seq) {
+	if (bbr->loss_round_start && 1) {
 		bbr->bw_latest = ctx->sample_bw;
 		bbr->inflight_latest = rs->delivered;
 	}
@@ -2039,8 +2048,7 @@ static bool bbr3_run_fast_path(struct sock *sk, bool *update_model,
 	return false;
 }
 
-static void bbr3_main(struct sock *sk, u32 ack, int flag,
-				 const struct rate_sample *rs)
+static void bbr3_main(struct sock *sk, const struct rate_sample *rs)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct bbr3 *bbr = inet_csk_ca(sk);
@@ -2222,7 +2230,8 @@ static void bbr3_run_loss_probe_recovery(struct sock *sk)
 	 */
 	rs.lost = 1;	/* TLP probe repaired loss of a single segment */
 	rs.tx_in_flight = bbr->inflight_latest + rs.lost;
-	rs.is_app_limited = tp->tlp_orig_data_app_limited;
+	/* rs.is_app_limited = tp->tlp_orig_data_app_limited; - missing in 4.14 */
+	rs.is_app_limited = false;
 	if (bbr3_is_inflight_too_high(sk, &rs))
 		bbr3_handle_inflight_too_high(sk, &rs);
 }
@@ -2299,36 +2308,10 @@ static enum tcp_bbr3_phase bbr3_get_phase(struct bbr3 *bbr)
 static size_t bbr3_get_info(struct sock *sk, u32 ext, int *attr,
 			    union tcp_cc_info *info)
 {
-	if (ext & (1 << (INET_DIAG_BBR3INFO - 1)) ||
-	    ext & (1 << (INET_DIAG_VEGASINFO - 1))) {
-		struct bbr3 *bbr = inet_csk_ca(sk);
-		u64 bw = bbr3_bw_bytes_per_sec(sk, bbr3_bw(sk));
-		u64 bw_hi = bbr3_bw_bytes_per_sec(sk, bbr3_max_bw(sk));
-		u64 bw_lo = bbr->bw_lo == ~0U ?
-			~0ULL : bbr3_bw_bytes_per_sec(sk, bbr->bw_lo);
-		struct tcp_bbr3_info *bbr3_info = &info->bbr;
-
-		memset(bbr3_info, 0, sizeof(*bbr3_info));
-		bbr3_info->bbr3_bw_lo		= (u32)bw;
-		bbr3_info->bbr3_bw_hi		= (u32)(bw >> 32);
-		bbr3_info->bbr3_min_rtt		= bbr->min_rtt_us;
-		bbr3_info->bbr3_pacing_gain	= bbr->pacing_gain;
-		bbr3_info->bbr3_cwnd_gain		= bbr->cwnd_gain;
-		bbr3_info->bbr3_bw_hi_lsb		= (u32)bw_hi;
-		bbr3_info->bbr3_bw_hi_msb		= (u32)(bw_hi >> 32);
-		bbr3_info->bbr3_bw_lo_lsb		= (u32)bw_lo;
-		bbr3_info->bbr3_bw_lo_msb		= (u32)(bw_lo >> 32);
-		bbr3_info->bbr3_mode		= bbr->mode;
-		bbr3_info->bbr3_phase		= (__u8)bbr3_get_phase(bbr);
-		bbr3_info->bbr3_version		= (__u8)BBR3_VERSION;
-		bbr3_info->bbr3_inflight_lo	= bbr->inflight_lo;
-		bbr3_info->bbr3_inflight_hi	= bbr->inflight_hi;
-		bbr3_info->bbr3_extra_acked	= bbr3_extra_acked(sk);
-		*attr = INET_DIAG_BBR3INFO;
-		return sizeof(*bbr3_info);
-	}
+	/* Temporarily disabled for 4.14 bring-up */
 	return 0;
 }
+
 
 static void bbr3_set_state(struct sock *sk, u8 new_state)
 {
