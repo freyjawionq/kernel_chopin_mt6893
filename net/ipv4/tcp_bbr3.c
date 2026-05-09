@@ -67,6 +67,14 @@
 #include <trace/events/tcp.h>
 #include "tcp_dctcp.h"
 
+#ifndef tcp_snd_cwnd
+#define tcp_snd_cwnd(tp) (tp->snd_cwnd)
+#endif
+
+#ifndef tcp_snd_cwnd_set
+#define tcp_snd_cwnd_set(tp, val) (tp->snd_cwnd = (val))
+#endif
+
 #define BBR3_VERSION		3
 
 #define bbr3_param(sk,name)	(bbr3_ ## name)
