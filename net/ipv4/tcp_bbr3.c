@@ -500,7 +500,7 @@ static u32 bbr3_tso_segs_generic(struct sock *sk, unsigned int mss_now,
 	if (bbr3_param(sk, tso_rtt_shift)) {
 		r = bbr->min_rtt_us >> bbr3_param(sk, tso_rtt_shift);
 		if (r < BITS_PER_TYPE(u32))   /* prevent undefined behavior */
-			bytes += GSO_LEGACY_MAX_SIZE >> r;
+			bytes += GSO_MAX_SIZE >> r;
 	}
 
 	bytes = min_t(u32, bytes, gso_max_size - 1 - MAX_TCP_HEADER);
@@ -520,7 +520,7 @@ static u32 bbr3_tso_segs_goal(struct sock *sk)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 
-	return  bbr3_tso_segs_generic(sk, tp->mss_cache, GSO_LEGACY_MAX_SIZE);
+	return  bbr3_tso_segs_generic(sk, tp->mss_cache, GSO_MAX_SIZE);
 }
 
 /* Save "last known good" cwnd so we can restore it after losses or PROBE_RTT */
@@ -2358,7 +2358,7 @@ static struct tcp_congestion_ops tcp_bbr3_cong_ops __read_mostly = {
 	.cwnd_event	= bbr3_cwnd_event,
 	.ssthresh	= bbr3_ssthresh,
 	.tso_segs	= bbr3_tso_segs,
-	.get_info	= bbr3_get_info,
+	.get_info	= NULL,
 	.set_state	= bbr3_set_state,
 };
 
