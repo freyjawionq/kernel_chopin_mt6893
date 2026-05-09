@@ -2256,6 +2256,18 @@ static u32 bbr3_ssthresh(struct sock *sk)
 	return tcp_sk(sk)->snd_ssthresh;
 }
 
+/* BBR3-specific phase as reported in netlink/ss stats. */
+enum tcp_bbr3_phase {
+	BBR3_PHASE_INVALID		= 0,
+	BBR3_PHASE_STARTUP		= 1,
+	BBR3_PHASE_DRAIN		= 2,
+	BBR3_PHASE_PROBE_RTT		= 3,
+	BBR3_PHASE_PROBE_BW_UP		= 4,
+	BBR3_PHASE_PROBE_BW_DOWN	= 5,
+	BBR3_PHASE_PROBE_BW_CRUISE	= 6,
+	BBR3_PHASE_PROBE_BW_REFILL	= 7,
+};
+
 static enum tcp_bbr3_phase bbr3_get_phase(struct bbr3 *bbr)
 {
 	switch (bbr->mode) {
