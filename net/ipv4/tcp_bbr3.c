@@ -2207,6 +2207,7 @@ static void bbr3_skb_marked_lost(struct sock *sk,
 
 static void bbr3_run_loss_probe_recovery(struct sock *sk)
 {
+	struct tcp_sock *tp = tcp_sk(sk);
 	struct bbr3 *bbr = inet_csk_ca(sk);
 	struct rate_sample rs = {0};
 
