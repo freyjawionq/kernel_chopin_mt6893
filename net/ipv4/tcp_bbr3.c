@@ -2155,6 +2155,7 @@ static void bbr3_init(struct sock *sk)
 	bbr->alpha_last_delivered = 0;
 	bbr->alpha_last_delivered_ce = 0;
 	bbr->plb.pause_until = 0;
+	bbr->plb.enabled = READ_ONCE(sock_net(sk)->ipv4.sysctl_tcp_plb_enabled);
 
 	tp->fast_ack_mode = bbr3_fast_ack_mode ? 1 : 0;
 
