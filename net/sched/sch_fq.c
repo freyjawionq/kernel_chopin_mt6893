@@ -55,23 +55,10 @@
 #include <net/tcp.h>
 #include <net/inet_ecn.h>
 
-struct fq_skb_cb {
-	u64	        time_to_send;
-};
-
-static inline struct fq_skb_cb *fq_skb_cb(struct sk_buff *skb)
-{
-	qdisc_cb_private_validate(skb, sizeof(struct fq_skb_cb));
-	return (struct fq_skb_cb *)qdisc_skb_cb(skb)->data;
-}
-
 /*
- * Per flow structure, dynamically allocated.
- * If packets have monotically increasing time_to_send, they are placed in O(1)
- * in linear list (head,tail), otherwise are placed in a rbtree (t_root).
+ * Per flow structure, dynamically allocated
  */
 struct fq_flow {
-	struct rb_root	t_root;
 	struct sk_buff	*head;		/* list of skbs for this flow : first skb */
 	union {
 		struct sk_buff *tail;	/* last skb in the list */
@@ -106,8 +93,8 @@ struct fq_sched_data {
 	u32		quantum;
 	u32		initial_quantum;
 	u32		flow_refill_delay;
-	u32		flow_plimit;	/* max packets per flow */
 	unsigned long	flow_max_rate;	/* optional max rate per flow */
+	u32		flow_plimit;	/* max packets per flow */
 	u64		ce_threshold;
 	u32		orphan_mask;	/* mask for orphaned skb */
 	u32		low_rate_threshold;
@@ -327,41 +314,15 @@ static struct fq_flow *fq_classify(struct sk_buff *skb, struct fq_sched_data *q)
 	return f;
 }
 
-static struct sk_buff *fq_peek(struct fq_flow *flow)
-{
-	struct sk_buff *skb = skb_rb_first(&flow->t_root);
-	struct sk_buff *head = flow->head;
-
-	if (!skb)
-		return head;
-
-	if (!head)
-		return skb;
-
-	if (fq_skb_cb(skb)->time_to_send < fq_skb_cb(head)->time_to_send)
-		return skb;
-	return head;
-}
-
-static void fq_erase_head(struct Qdisc *sch, struct fq_flow *flow,
-			  struct sk_buff *skb)
-{
-	if (skb == flow->head) {
-		flow->head = skb->next;
-	} else {
-		rb_erase(&skb->rbnode, &flow->t_root);
-		skb->dev = qdisc_dev(sch);
-	}
-}
 
 /* remove one skb from head of flow queue */
 static struct sk_buff *fq_dequeue_head(struct Qdisc *sch, struct fq_flow *flow)
 {
-	struct sk_buff *skb = fq_peek(flow);
+	struct sk_buff *skb = flow->head;
 
 	if (skb) {
-		fq_erase_head(sch, flow, skb);
-		skb_mark_not_on_list(skb);
+		flow->head = skb->next;
+		skb->next = NULL;
 		flow->qlen--;
 		qdisc_qstats_backlog_dec(sch, skb);
 		sch->q.qlen--;
@@ -369,38 +330,62 @@ static struct sk_buff *fq_dequeue_head(struct Qdisc *sch, struct fq_flow *flow)
 	return skb;
 }
 
+/* We might add in the future detection of retransmits
+ * For the time being, just return false
+ */
+static bool skb_is_retransmit(struct sk_buff *skb)
+{
+	return false;
+}
+
+/* add skb to flow queue
+ * flow queue is a linked list, kind of FIFO, except for TCP retransmits
+ * We special case tcp retransmits to be transmitted before other packets.
+ * We rely on fact that TCP retransmits are unlikely, so we do not waste
+ * a separate queue or a pointer.
+ * head->  [retrans pkt 1]
+ *         [retrans pkt 2]
+ *         [ normal pkt 1]
+ *         [ normal pkt 2]
+ *         [ normal pkt 3]
+ * tail->  [ normal pkt 4]
+ */
 static void flow_queue_add(struct fq_flow *flow, struct sk_buff *skb)
 {
-	struct rb_node **p, *parent;
-	struct sk_buff *head, *aux;
+	struct sk_buff *prev, *head = flow->head;
 
-	fq_skb_cb(skb)->time_to_send = skb->tstamp ?: ktime_get_ns();
-
-	head = flow->head;
-	if (!head ||
-	    fq_skb_cb(skb)->time_to_send >= fq_skb_cb(flow->tail)->time_to_send) {
-		if (!head)
-			flow->head = skb;
-		else
-			flow->tail->next = skb;
+	skb->next = NULL;
+	if (!head) {
+		flow->head = skb;
 		flow->tail = skb;
-		skb->next = NULL;
+		return;
+	}
+	if (likely(!skb_is_retransmit(skb))) {
+		flow->tail->next = skb;
+		flow->tail = skb;
 		return;
 	}
 
-	p = &flow->t_root.rb_node;
-	parent = NULL;
-
-	while (*p) {
-		parent = *p;
-		aux = rb_to_skb(parent);
-		if (fq_skb_cb(skb)->time_to_send >= fq_skb_cb(aux)->time_to_send)
-			p = &parent->rb_right;
-		else
-			p = &parent->rb_left;
+	/* This skb is a tcp retransmit,
+	 * find the last retrans packet in the queue
+	 */
+	prev = NULL;
+	while (skb_is_retransmit(head)) {
+		prev = head;
+		head = head->next;
+		if (!head)
+			break;
 	}
-	rb_link_node(&skb->rbnode, parent, p);
-	rb_insert_color(&skb->rbnode, &flow->t_root);
+	if (!prev) { /* no rtx packet in queue, become the new head */
+		skb->next = flow->head;
+		flow->head = skb;
+	} else {
+		if (prev == flow->tail)
+			flow->tail = skb;
+		else
+			skb->next = prev->next;
+		prev->next = skb;
+	}
 }
 
 static int fq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
@@ -419,6 +404,8 @@ static int fq_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	}
 
 	f->qlen++;
+	if (skb_is_retransmit(skb))
+		q->stat_tcp_retrans++;
 	qdisc_qstats_backlog_inc(sch, skb);
 	if (fq_flow_is_detached(f)) {
 		struct sock *sk = skb->sk;
@@ -476,21 +463,16 @@ static void fq_check_throttled(struct fq_sched_data *q, u64 now)
 static struct sk_buff *fq_dequeue(struct Qdisc *sch)
 {
 	struct fq_sched_data *q = qdisc_priv(sch);
+	u64 now = ktime_get_ns();
 	struct fq_flow_head *head;
 	struct sk_buff *skb;
 	struct fq_flow *f;
 	unsigned long rate;
 	u32 plen;
-	u64 now;
-
-	if (!sch->q.qlen)
-		return NULL;
 
 	skb = fq_dequeue_head(sch, &q->internal);
 	if (skb)
 		goto out;
-
-	now = ktime_get_ns();
 	fq_check_throttled(q, now);
 begin:
 	head = &q->new_flows;
@@ -512,19 +494,15 @@ begin:
 		goto begin;
 	}
 
-	skb = fq_peek(f);
+	skb = f->head;
 	if (skb) {
-		u64 time_next_packet = max_t(u64, fq_skb_cb(skb)->time_to_send,
-					     f->time_next_packet);
-
-		if (now < time_next_packet && !skb_is_tcp_pure_ack(skb)) {
+		if (now < f->time_next_packet && !skb_is_tcp_pure_ack(skb)) {
 			head->first = f->next;
-			f->time_next_packet = time_next_packet;
 			fq_flow_set_throttled(q, f);
 			goto begin;
 		}
-		if (time_next_packet &&
-		    (s64)(now - time_next_packet - q->ce_threshold) > 0) {
+		if (f->time_next_packet &&
+		    (s64)(now - f->time_next_packet - q->ce_threshold) > 0) {
 			INET_ECN_set_ce(skb);
 			q->stat_ce_mark++;
 		}
@@ -549,36 +527,33 @@ begin:
 	if (!q->rate_enable)
 		goto out;
 
+	/* Do not pace locally generated ack packets */
+	if (skb_is_tcp_pure_ack(skb))
+		goto out;
+
 	rate = q->flow_max_rate;
+	if (skb->sk)
+		rate = min_t(unsigned long, skb->sk->sk_pacing_rate, rate);
 
-	/* If EDT time was provided for this skb, we need to
-	 * update f->time_next_packet only if this qdisc enforces
-	 * a flow max rate.
-	 */
-	if (!skb->tstamp) {
-		if (skb->sk)
-			rate = min_t(unsigned long, skb->sk->sk_pacing_rate, rate);
+	if (unlikely(rate == 0))
+		goto out;
 
-		if (rate <= q->low_rate_threshold) {
-			f->credit = 0;
-		} else {
-			plen = max(plen, q->quantum);
-			if (f->credit > 0)
-				goto out;
-		}
+	if (rate <= q->low_rate_threshold) {
+		f->credit = 0;
+	} else {
+		plen = max(plen, q->quantum);
+		if (f->credit > 0)
+			goto out;
 	}
-
 	if (rate != ~0UL) {
 		u64 len = (u64)plen * NSEC_PER_SEC;
 
-		if (likely(rate))
-			len = div64_ul(len, rate);
+		len = div64_ul(len, rate);
 		/* Since socket rate can change later,
-		 * clamp the delay to 1 second.
-		 * Really, providers of too big packets should be fixed !
+		 * clamp the delay to 125ms.
 		 */
-		if (unlikely(len > NSEC_PER_SEC)) {
-			len = NSEC_PER_SEC;
+		if (unlikely(len > NSEC_PER_SEC / 8)) {
+			len = NSEC_PER_SEC / 8;
 			q->stat_pkts_too_long++;
 		}
 		/* Account for schedule/timers drifts.
@@ -596,15 +571,6 @@ out:
 
 static void fq_flow_purge(struct fq_flow *flow)
 {
-	struct rb_node *p = rb_first(&flow->t_root);
-
-	while (p) {
-		struct sk_buff *skb = rb_to_skb(p);
-
-		p = rb_next(p);
-		rb_erase(&skb->rbnode, &flow->t_root);
-		rtnl_kfree_skbs(skb, skb);
-	}
 	rtnl_kfree_skbs(flow->head, flow->tail);
 	flow->head = NULL;
 	flow->qlen = 0;
