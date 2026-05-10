@@ -282,6 +282,48 @@ bool nf_ct_get_tuplepr(const struct sk_buff *skb, unsigned int nhoff,
 }
 EXPORT_SYMBOL_GPL(nf_ct_get_tuplepr);
 
+bool nf_ct_get_tuple_skb(struct nf_conntrack_tuple *dst_tuple,
+			 const struct sk_buff *skb)
+{
+	const struct nf_conntrack_l3proto *l3proto;
+	const struct nf_conntrack_l4proto *l4proto;
+	enum ip_conntrack_info ctinfo;
+	struct nf_conn *ct;
+	unsigned int protoff;
+	u_int8_t protonum;
+	u_int16_t l3num;
+	int ret;
+
+	ct = nf_ct_get(skb, &ctinfo);
+	if (ct) {
+		*dst_tuple = ct->tuplehash[CTINFO2DIR(ctinfo)].tuple;
+		return true;
+	}
+
+	if (skb->protocol == htons(ETH_P_IP))
+		l3num = NFPROTO_IPV4;
+	else if (skb->protocol == htons(ETH_P_IPV6))
+		l3num = NFPROTO_IPV6;
+	else
+		return false;
+
+	rcu_read_lock();
+	l3proto = __nf_ct_l3proto_find(l3num);
+	ret = l3proto->get_l4proto(skb, skb_network_offset(skb), &protoff, &protonum);
+	if (ret != NF_ACCEPT) {
+		rcu_read_unlock();
+		return false;
+	}
+
+	l4proto = __nf_ct_l4proto_find(l3num, protonum);
+	ret = nf_ct_get_tuple(skb, skb_network_offset(skb), protoff, l3num,
+			      protonum, dev_net(skb->dev), dst_tuple,
+			      l3proto, l4proto);
+	rcu_read_unlock();
+	return ret;
+}
+EXPORT_SYMBOL_GPL(nf_ct_get_tuple_skb);
+
 bool
 nf_ct_invert_tuple(struct nf_conntrack_tuple *inverse,
 		   const struct nf_conntrack_tuple *orig,
