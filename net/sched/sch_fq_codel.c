@@ -402,7 +402,7 @@ static int fq_codel_change(struct Qdisc *sch, struct nlattr *opt)
 
 	if (tb[TCA_FQ_CODEL_QUANTUM]) {
 		quantum = max(256U, nla_get_u32(tb[TCA_FQ_CODEL_QUANTUM]));
-		if (quantum > 64 * 1024 * 1024)
+		if (quantum > FQ_CODEL_QUANTUM_MAX)
 			return -EINVAL;
 	}
 

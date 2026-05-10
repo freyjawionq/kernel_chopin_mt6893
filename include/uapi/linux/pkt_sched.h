@@ -733,6 +733,7 @@ enum {
 };
 
 #define TCA_FQ_CODEL_MAX	(__TCA_FQ_CODEL_MAX - 1)
+#define FQ_CODEL_QUANTUM_MAX	(1 << 20)
 
 enum {
 	TCA_FQ_CODEL_XSTATS_QDISC,
