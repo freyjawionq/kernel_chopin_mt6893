@@ -7,6 +7,12 @@
 #include <asm/assembler.h>
 #include <linux/version.h>
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0)
+#define SYM_FUNC_START(name)		ENTRY(name)
+#define SYM_FUNC_END(name)		ENDPROC(name)
+#define SYM_INNER_LABEL(name, ...)	name:
+#endif
+
 /**
  * _lz4_decompress_asm: The fast LZ4 decompression, lz4 decompression algothrim asm
  * routine,support Huawei EROFS filesystem striving for maximum decompression speed.
