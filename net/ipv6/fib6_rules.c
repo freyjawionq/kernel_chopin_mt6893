@@ -154,48 +154,8 @@ static int fib6_rule_saddr(struct net *net, struct fib_rule *rule, int flags,
 	return 0;
 }
 
-static int fib6_rule_action_alt(struct fib_rule *rule, struct flowi *flp,
-				int flags, struct fib_lookup_arg *arg)
-{
-	struct flowi6 *flp6 = &flp->u.ip6;
-	struct net *net = rule->fr_net;
-	struct fib6_table *table;
-	struct fib6_info *f6i;
-	int err = -EAGAIN, *oif;
-	u32 tb_id;
-
-	switch (rule->action) {
-	case FR_ACT_TO_TBL:
-		break;
-	case FR_ACT_UNREACHABLE:
-		return -ENETUNREACH;
-	case FR_ACT_PROHIBIT:
-		return -EACCES;
-	case FR_ACT_BLACKHOLE:
-	default:
-		return -EINVAL;
-	}
-
-	tb_id = fib_rule_get_table(rule, arg);
-	table = fib6_get_table(net, tb_id);
-	if (!table)
-		return -EAGAIN;
-
-	oif = (int *)arg->lookup_data;
-	f6i = fib6_table_lookup(net, table, *oif, flp6, flags);
-	if (f6i != net->ipv6.fib6_null_entry) {
-		err = fib6_rule_saddr(net, rule, flags, flp6,
-				      fib6_info_nh_dev(f6i));
-
-		if (likely(!err))
-			arg->result = f6i;
-	}
-
-	return err;
-}
-
-static int __fib6_rule_action(struct fib_rule *rule, struct flowi *flp,
-			      int flags, struct fib_lookup_arg *arg)
+static int fib6_rule_action(struct fib_rule *rule, struct flowi *flp,
+			    int flags, struct fib_lookup_arg *arg)
 {
 	struct flowi6 *flp6 = &flp->u.ip6;
 	struct rt6_info *rt = NULL;
@@ -257,15 +217,6 @@ discard_pkt:
 out:
 	arg->result = rt;
 	return err;
-}
-
-static int fib6_rule_action(struct fib_rule *rule, struct flowi *flp,
-			    int flags, struct fib_lookup_arg *arg)
-{
-	if (arg->lookup_ptr == fib6_table_lookup)
-		return fib6_rule_action_alt(rule, flp, flags, arg);
-
-	return __fib6_rule_action(rule, flp, flags, arg);
 }
 
 static bool fib6_rule_suppress(struct fib_rule *rule, struct fib_lookup_arg *arg)
