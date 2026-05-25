@@ -18,6 +18,8 @@
 #ifndef _XHCI_MTK_H_
 #define _XHCI_MTK_H_
 
+struct proc_dir_entry;
+
 #include "xhci.h"
 
 /**
@@ -137,6 +139,8 @@ struct xhci_hcd_mtk {
 	struct dentry *debugfs_root;
 	int last_speed;
 };
+
+struct proc_dir_entry *mtk_usb_get_proc_root(void);
 
 static inline struct xhci_hcd_mtk *hcd_to_mtk(struct usb_hcd *hcd)
 {
