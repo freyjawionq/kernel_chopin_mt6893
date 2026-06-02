@@ -275,7 +275,6 @@ static void __activate_page(struct page *page, struct lruvec *lruvec,
 {
 	if (PageLRU(page) && !PageActive(page) && !PageUnevictable(page)) {
 		int file = page_is_file_cache(page);
-		int lru = page_lru(page);
 
 		del_page_from_lru_list(page, lruvec);
 		SetPageActive(page);
@@ -625,8 +624,7 @@ static void lru_lazyfree_fn(struct page *page, struct lruvec *lruvec,
 	    !PageSwapCache(page) && !PageUnevictable(page)) {
 		bool active = PageActive(page);
 
-		del_page_from_lru_list(page, lruvec,
-				       LRU_INACTIVE_ANON + active);
+		del_page_from_lru_list(page, lruvec);
 		ClearPageActive(page);
 		ClearPageReferenced(page);
 		/*
