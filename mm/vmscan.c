@@ -1740,7 +1740,6 @@ int isolate_lru_page(struct page *page)
 		spin_lock_irq(zone_lru_lock(zone));
 		lruvec = mem_cgroup_page_lruvec(page, zone->zone_pgdat);
 		if (PageLRU(page)) {
-			int lru = page_lru(page);
 			get_page(page);
 			ClearPageLRU(page);
 			del_page_from_lru_list(page, lruvec);
@@ -2069,7 +2068,7 @@ static unsigned move_active_pages_to_lru(struct lruvec *lruvec,
 			} else
 				list_add(&page->lru, pages_to_free);
 		} else {
-			nr_moved += nr_pages;
+			nr_moved += hpage_nr_pages(page);
 		}
 	}
 
