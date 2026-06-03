@@ -104,6 +104,11 @@ static inline bool lru_gen_enabled(void)
 #endif
 }
 
+#ifndef arch_has_hw_pte_young
+#define arch_has_hw_pte_young() \
+	(IS_ENABLED(CONFIG_ARM64_HW_AFDBM) && lru_gen_enabled())
+#endif
+
 static inline bool lru_gen_in_fault(void)
 {
 	return current->in_lru_fault;
