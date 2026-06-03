@@ -4749,10 +4749,12 @@ int __handle_speculative_fault(struct mm_struct *mm, unsigned long address,
 		goto out_put;
 	}
 
+	lru_gen_enter_fault(vma);
 	mem_cgroup_oom_enable();
 	ret = handle_pte_fault(&vmf);
 	/* NOTE: vmf.pte should be unmapped after handle_pte_fault */
 	mem_cgroup_oom_disable();
+	lru_gen_exit_fault();
 
 	put_vma(vma);
 
