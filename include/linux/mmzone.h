@@ -266,6 +266,7 @@ struct zone_reclaim_stat {
  */
 #define MIN_NR_GENS		2U
 #define MAX_NR_GENS		4U
+#define ANON_AND_FILE		2
 
 /*
  * Each generation is divided into multiple tiers. Tiers represent different

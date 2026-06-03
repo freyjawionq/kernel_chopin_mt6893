@@ -3248,6 +3248,30 @@ static bool suitable_to_scan(int total, int young)
 	return young * n >= total;
 }
 
+/* promote pages accessed through page tables */
+static int page_update_gen(struct page *page, int gen)
+{
+	unsigned long new_flags, old_flags;
+
+	VM_BUG_ON(gen >= MAX_NR_GENS);
+	VM_BUG_ON(!rcu_read_lock_held());
+
+	do {
+		old_flags = READ_ONCE(page->flags);
+
+		/* for shrink_page_list() */
+		if (!(old_flags & LRU_GEN_MASK)) {
+			new_flags = old_flags | BIT(PG_referenced);
+			continue;
+		}
+
+		new_flags = old_flags & ~(LRU_GEN_MASK | LRU_REFS_MASK | LRU_REFS_FLAGS);
+		new_flags |= (gen + 1UL) << LRU_GEN_PGOFF;
+	} while (cmpxchg(&page->flags, old_flags, new_flags) != old_flags);
+
+	return ((old_flags & LRU_GEN_MASK) >> LRU_GEN_PGOFF) - 1;
+}
+
 static bool walk_pte_range(pmd_t *pmd, unsigned long start, unsigned long end,
 			   struct mm_walk *walk)
 {
