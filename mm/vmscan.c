@@ -2053,6 +2053,7 @@ static unsigned move_active_pages_to_lru(struct lruvec *lruvec,
 
 		VM_BUG_ON_PAGE(PageLRU(page), page);
 		SetPageLRU(page);
+		list_del(&page->lru);
 		add_page_to_lru_list(page, lruvec);
 
 		if (put_page_testzero(page)) {
