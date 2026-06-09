@@ -1714,6 +1714,9 @@ int LZ4_compress_fast_extState_fastReset(void *state, const char *src,
 int LZ4_compress_fast(const char *src, char *dest, int srcSize, int dstCapacity,
 		      int acceleration)
 {
+#if LZ4_FREESTANDING
+	return 0;
+#else
 	int result;
 #if (LZ4_HEAPMODE)
 	LZ4_stream_t *const ctxPtr = (LZ4_stream_t *)ALLOC(sizeof(
@@ -1731,6 +1734,7 @@ int LZ4_compress_fast(const char *src, char *dest, int srcSize, int dstCapacity,
 	FREEMEM(ctxPtr);
 #endif
 	return result;
+#endif
 }
 
 int LZ4_compress_default(const char *src, char *dst, int srcSize,
@@ -1797,6 +1801,9 @@ int LZ4_compress_destSize_extState(void *state, const char *src, char *dst,
 int LZ4_compress_destSize(const char *src, char *dst, int *srcSizePtr,
 			  int targetDstSize)
 {
+#if LZ4_FREESTANDING
+	return 0;
+#else
 #if (LZ4_HEAPMODE)
 	LZ4_stream_t *const ctx = (LZ4_stream_t *)ALLOC(sizeof(
 		LZ4_stream_t)); /* malloc-calloc always properly aligned */
@@ -1814,6 +1821,7 @@ int LZ4_compress_destSize(const char *src, char *dst, int *srcSizePtr,
 	FREEMEM(ctx);
 #endif
 	return result;
+#endif
 }
 
 /*-******************************

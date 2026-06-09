@@ -247,8 +247,13 @@ struct LZ4HC_CCtx_internal {
 	const LZ4HC_CCtx_internal *dictCtx;
 };
 
+#define LZ4HC_OPT_NUM (1 << 12)
+#define LZ4HC_TRAILING_LITERALS 3
+#define LZ4HC_OPTIMAL_MINSIZE                                                  \
+	((LZ4HC_OPT_NUM + LZ4HC_TRAILING_LITERALS) * 4 * sizeof(int))
+
 #define LZ4_STREAMHC_MINSIZE                                                   \
-	262200 /* static size, for inter-version compatibility */
+	(262200 + LZ4HC_OPTIMAL_MINSIZE) /* static size, for inter-version compatibility */
 union LZ4_streamHC_u {
 	char minStateSize[LZ4_STREAMHC_MINSIZE];
 	LZ4HC_CCtx_internal internal_donotuse;
