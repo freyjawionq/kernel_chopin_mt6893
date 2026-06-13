@@ -4,11 +4,9 @@ function compile()
 {
 
 source ~/.bashrc && source ~/.profile
-export LC_ALL=C && export USE_CCACHE=1
-ccache -M 100G
+export LC_ALL=C
 export ARCH=arm64
 export LOCALVERSION='-Ciallo~'
-git clone --depth=1  https://gitlab.com/LeCmnGend/proton-clang.git -b clang-13 clang
 
  if ! [ -d "out" ]; then
 echo "Kernel OUT Directory Not Found . Making Again"

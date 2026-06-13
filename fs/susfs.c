@@ -914,3 +914,18 @@ void susfs_init(void) {
 /* No module exit is needed becuase it should never be a loadable kernel module */
 //void __init susfs_exit(void)
 
+
+
+/* Compatibility for KernelSU-Next legacy-susfs branch */
+void susfs_set_current_proc_umounted(void) { }
+void susfs_run_sus_path_loop(void) { }
+void susfs_start_sdcard_monitor_fn(void) { }
+bool susfs_is_current_proc_umounted(void) { return false; }
+void susfs_add_sus_path_loop(void *arg) { }
+void susfs_set_hide_sus_mnts_for_non_su_procs(bool arg) { }
+void susfs_enable_log(bool arg) { }
+void susfs_add_sus_map(void *arg) { }
+void susfs_set_avc_log_spoofing(bool arg) { }
+void susfs_get_enabled_features(void *arg) { }
+void susfs_show_variant(void *arg) { }
+void susfs_show_version(void *arg) { }

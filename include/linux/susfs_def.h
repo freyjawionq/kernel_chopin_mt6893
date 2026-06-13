@@ -60,3 +60,10 @@
 #define DATA_ADB_NO_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT "/data/adb/susfs_no_auto_add_try_umount_for_bind_mount"
 
 #endif // #ifndef KSU_SUSFS_DEF_H
+
+/* Missing macros for KernelSU-Next legacy-susfs */
+#define CMD_SUSFS_ADD_SUS_PATH_LOOP 0x55551
+#define CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS 0x555d1
+#define CMD_SUSFS_ADD_SUS_MAP 0x555c1
+#define CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING 0x555a1
+#define SUSFS_MAGIC 0x5555
