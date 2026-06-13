@@ -69,7 +69,7 @@ int ksu_install_fd(void)
 }
 
 int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
-			  void __user **arg)
+			  void __user *arg)
 {
 	if (magic1 != KSU_INSTALL_MAGIC1)
 		return 0;
@@ -82,8 +82,7 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 	// Check if this is a request to install KSU fd
 	if (magic2 == KSU_INSTALL_MAGIC2) {
 		int fd = ksu_install_fd();
-		// downstream: dereference all arg usage!
-		if (copy_to_user((void __user *)*arg, &fd, sizeof(fd))) {
+		if (copy_to_user(arg, &fd, sizeof(fd))) {
 			pr_err("install ksu fd reply err\n");
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 		close_fd(fd);
@@ -95,7 +94,7 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 	}
 
 	// extensions 
-	u64 reply = (u64)*arg;
+	u64 reply = (uintptr_t)arg;
 
 	if (magic2 == CHANGE_MANAGER_UID) {
 		// only root is allowed for this command
@@ -106,7 +105,7 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 		ksu_set_manager_appid(cmd);
 
 		if (cmd == ksu_get_manager_appid()) {
-			if (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
+			if (copy_to_user(arg, &reply, sizeof(reply)))
 				pr_info("sys_reboot: reply fail\n");
 		}
 
@@ -118,11 +117,11 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 		if (current_uid().val != 0)
 			return 0;
 
-		int ret = send_sulog_dump(*arg);
+		int ret = send_sulog_dump(arg);
 		if (ret)
 			return 0;
 
-		if (copy_to_user((void __user *)*arg, &reply, sizeof(reply) ))
+		if (copy_to_user(arg, &reply, sizeof(reply) ))
 			return 0;
 	}
 
@@ -134,7 +133,7 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 		pr_info("sys_reboot: ksu_change_ksuver to: %d\n", cmd);
 		ksuver_override = cmd;
 
-		if (copy_to_user((void __user *)*arg, &reply, sizeof(reply) ))
+		if (copy_to_user(arg, &reply, sizeof(reply) ))
 			return 0;
 	}
 
@@ -150,29 +149,25 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 		static char original_release_buf[65] = {0};
 		static char original_version_buf[65] = {0};
 
-		// basically void * void __user * void __user *arg
-		void ***ppptr = (uintptr_t)arg;
-
 		// user pointer storage
 		// init this as zero so this works on 32-on-64 compat (LE)
 		uint64_t u_pptr = 0;
 		uint64_t u_ptr = 0;
 
-		pr_info("sys_reboot: ppptr: 0x%lx \n", ppptr);
+		pr_info("sys_reboot: arg: 0x%lx \n", (uintptr_t)arg);
 
-		// arg here is ***, dereference to pull out **
-		if (copy_from_user(&u_pptr, (void __user *)*ppptr, sizeof(u_pptr)))
+		// arg here is __user *, dereference once to get the next level pointer
+		if (copy_from_user(&u_pptr, arg, sizeof(u_pptr)))
 			return 0;
 
-		pr_info("sys_reboot: u_pptr: 0x%lx \n", u_pptr);
+		pr_info("sys_reboot: u_pptr: 0x%lx \n", (uintptr_t)u_pptr);
 
-		// now we got the __user **
-		// we cannot dereference this as this is __user
+		// now we got the __user *
 		// we just do another copy_from_user to get it
 		if (copy_from_user(&u_ptr, (void __user *)u_pptr, sizeof(u_ptr)))
 			return 0;
 
-		pr_info("sys_reboot: u_ptr: 0x%lx \n", u_ptr);
+		pr_info("sys_reboot: u_ptr: 0x%lx \n", (uintptr_t)u_ptr);
 
 		// for release
 		if (strncpy_from_user(release_buf, (char __user *)u_ptr, sizeof(release_buf)) < 0)
@@ -217,8 +212,8 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd,
 #endif
 		up_write(&uts_sem);
 
-		// we write our confirmation on **
-		if (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
+		// we write our confirmation
+		if (copy_to_user(arg, &reply, sizeof(reply)))
 			return 0;
 	}
 
@@ -233,9 +228,8 @@ static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
 	int magic2 = (int)PT_REGS_PARM2(real_regs);
 	unsigned int cmd = (unsigned int)PT_REGS_PARM3(real_regs);
 	unsigned long arg4 = (unsigned long)PT_REGS_SYSCALL_PARM4(real_regs);
-	unsigned long reply = (unsigned long)arg4;
 
-	return ksu_handle_sys_reboot(magic1, magic2, cmd, (void __user **)&arg4);
+	return ksu_handle_sys_reboot(magic1, magic2, cmd, (void __user *)arg4);
 }
 
 static struct kprobe reboot_kp = {

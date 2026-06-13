@@ -15,10 +15,12 @@ fi
 
 make O=out ARCH=arm64 chopin_user_defconfig
 
-PATH="${PWD}/clang/bin:${PATH}:${PWD}/clang/bin:${PATH}:${PWD}/clang/bin:${PATH}" \
+PATH="${PWD}/clang/bin:${PATH}" \
 make -j$(nproc --all) O=out \
                       ARCH=arm64 \
                       CC="clang" \
+                      HOSTCC="gcc" \
+                      HOSTLD="ld" \
                       CLANG_TRIPLE=aarch64-linux-gnu- \
                       CROSS_COMPILE="${PWD}/clang/bin/aarch64-linux-gnu-" \
                       CROSS_COMPILE_ARM32="${PWD}/clang/bin/arm-linux-gnueabi-" \

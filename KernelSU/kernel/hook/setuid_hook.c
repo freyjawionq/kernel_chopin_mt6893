@@ -27,7 +27,7 @@
 #include "feature/kernel_umount.h"
 #include "compat/kernel_compat.h"
 
-extern void disable_seccomp(struct task_struct *tsk);
+extern void disable_seccomp(void);
 
 static void ksu_install_manager_fd_tw_func(struct callback_head *cb)
 {
@@ -50,7 +50,7 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
             ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
         }
 #else
-		disable_seccomp(current);
+		disable_seccomp();
 #endif
 
 #ifdef KSU_KPROBES_HOOK
@@ -75,7 +75,7 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
             ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
         }
 #else
-		disable_seccomp(current);
+		disable_seccomp();
 #endif
 
 #ifdef KSU_KPROBES_HOOK
