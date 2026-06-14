@@ -1,2 +1,5 @@
-userspace
-manager
+.idea
+CLAUDE.md
+.DS_Store
+build.sh
+AGENTS.md
