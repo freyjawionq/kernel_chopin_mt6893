@@ -21,6 +21,56 @@
 #include <trace/events/power.h>
 
 #include "power.h"
+#include <linux/module.h>
+#include <linux/string.h>
+
+#define MAX_BLOCKED_WAKELOCKS 20
+#define WAKELOCK_NAME_LEN 64
+
+static char blocked_wakelocks[MAX_BLOCKED_WAKELOCKS][WAKELOCK_NAME_LEN] = {
+	"wakeup_ta_algo",
+	"conninfra_wakeup",
+	"aw8697_rtp_work_routine",
+};
+static int blocked_wakelock_count = 3;
+
+static int set_blocked_wakelocks(const char *val, const struct kernel_param *kp)
+{
+	char *str = kstrdup(val, GFP_KERNEL);
+	char *token, *p;
+	int i = 0;
+
+	if (!str)
+		return -ENOMEM;
+
+	p = str;
+	while ((token = strsep(&p, ",")) && i < MAX_BLOCKED_WAKELOCKS) {
+		strlcpy(blocked_wakelocks[i], strim(token), WAKELOCK_NAME_LEN);
+		i++;
+	}
+	blocked_wakelock_count = i;
+	kfree(str);
+	return 0;
+}
+
+static int get_blocked_wakelocks(char *val, const struct kernel_param *kp)
+{
+	int i, len = 0;
+	for (i = 0; i < blocked_wakelock_count; i++) {
+		len += scnprintf(val + len, 4096 - len, "%s%s",
+				 blocked_wakelocks[i],
+				 i < blocked_wakelock_count - 1 ? "," : "");
+	}
+	len += scnprintf(val + len, 4096 - len, "\n");
+	return len;
+}
+
+static const struct kernel_param_ops blocked_wakelocks_ops = {
+	.set = set_blocked_wakelocks,
+	.get = get_blocked_wakelocks,
+};
+
+module_param_cb(blocked_wakelocks, &blocked_wakelocks_ops, NULL, 0644);
 
 #ifndef CONFIG_SUSPEND
 suspend_state_t pm_suspend_target_state;
@@ -577,10 +627,18 @@ static bool wakeup_source_not_registered(struct wakeup_source *ws)
 static void wakeup_source_activate(struct wakeup_source *ws)
 {
 	unsigned int cec;
+	int i;
 
 	if (WARN_ONCE(wakeup_source_not_registered(ws),
 			"unregistered wakeup source\n"))
 		return;
+
+	if (ws->name) {
+		for (i = 0; i < blocked_wakelock_count; i++) {
+			if (!strcmp(ws->name, blocked_wakelocks[i]))
+				return;
+		}
+	}
 
 	ws->active = true;
 	ws->active_count++;
