@@ -901,9 +901,9 @@ int charger_manager_get_prop_system_temp_scene(void)
 		thermal_scene = NORMAL_CHG_SCENE;
 
 	if (thermal_scene == NORMAL_CHG_SCENE && screen_brightness > SCREEN_OFF)
-		thermal_scene = SCREENON_CHG_SCENE;
+		thermal_scene = NORMAL_CHG_SCENE;
 	else if (thermal_scene == GAME_CHG_SCENE && screen_brightness > SCREEN_HIGHLIGHT)
-		thermal_scene = GAME_HIGHLOAD_CHG_SCENE;
+		thermal_scene = GAME_CHG_SCENE;
 
 	return thermal_scene;
 }
