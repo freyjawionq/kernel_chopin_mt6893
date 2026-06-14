@@ -229,7 +229,7 @@ void _wake_up_charger(struct charger_manager *info)
 
 	spin_lock_irqsave(&info->slock, flags);
 	if (!info->charger_wakelock.active)
-		__pm_stay_awake(&info->charger_wakelock);
+		// __pm_stay_awake(&info->charger_wakelock);
 	spin_unlock_irqrestore(&info->slock, flags);
 	info->charger_thread_timeout = true;
 	wake_up(&info->wait_que);
@@ -2728,7 +2728,7 @@ static enum alarmtimer_restart
 		chr_err("%s: alarm timer timeout\n", __func__);
 		spin_lock_irqsave(&info->slock, flags);
 		if (!info->charger_wakelock.active)
-			__pm_stay_awake(&info->charger_wakelock);
+			// __pm_stay_awake(&info->charger_wakelock);
 		spin_unlock_irqrestore(&info->slock, flags);
 	}
 
@@ -2786,7 +2786,7 @@ static int charger_routine_thread(void *arg)
 		mutex_lock(&info->charger_lock);
 		spin_lock_irqsave(&info->slock, flags);
 		if (!info->charger_wakelock.active)
-			__pm_stay_awake(&info->charger_wakelock);
+			// __pm_stay_awake(&info->charger_wakelock);
 		spin_unlock_irqrestore(&info->slock, flags);
 
 		info->charger_thread_timeout = false;
@@ -2827,7 +2827,7 @@ static int charger_routine_thread(void *arg)
 			chr_debug("disable charging\n");
 
 		spin_lock_irqsave(&info->slock, flags);
-		__pm_relax(&info->charger_wakelock);
+		// __pm_relax(&info->charger_wakelock);
 		spin_unlock_irqrestore(&info->slock, flags);
 		chr_debug("%s end , %d\n",
 			__func__, info->charger_thread_timeout);

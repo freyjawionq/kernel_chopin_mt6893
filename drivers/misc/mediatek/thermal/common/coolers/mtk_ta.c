@@ -373,39 +373,7 @@ static void ta_nl_data_handler(struct sk_buff *skb)
 
 int wakeup_ta_algo(int flow_state)
 {
-	tsta_dprintk("[%s]g_tad_pid=%d, state=%d\n", __func__, g_tad_pid,
-								flow_state);
-
-	/*Avoid print log too much*/
-	if (g_ta_counter >= 3) {
-		g_ta_counter = 0;
-		if (g_ta_status != 0)
-			tsta_warn("[%s] status: 0x%x\n", __func__, g_ta_status);
-	}
-	g_ta_counter++;
-	if (g_tad_pid != 0) {
-		struct tad_nl_msg_t *tad_msg = NULL;
-		int size = TAD_NL_MSG_T_HDR_LEN + sizeof(flow_state);
-
-		/*tad_msg = (struct tad_nl_msg_t *)vmalloc(size);*/
-		tad_msg = kmalloc(size, GFP_KERNEL);
-
-		if (tad_msg == NULL) {
-			g_ta_status = g_ta_status | 0x00100000;
-			return -ENOMEM;
-		}
-		tsta_dprintk("[%s] malloc size=%d\n", __func__, size);
-		memset(tad_msg, 0, size);
-		tad_msg->tad_cmd = TA_DAEMON_CMD_NOTIFY_DAEMON;
-		memcpy(tad_msg->tad_data, &flow_state, sizeof(flow_state));
-		tad_msg->tad_data_len += sizeof(flow_state);
-		ta_nl_send_to_user(g_tad_pid, 0, tad_msg);
-		kfree(tad_msg);
-		return 0;
-	}
-	tsta_warn("[%s] error,g_tad_pid=0\n", __func__);
-	g_ta_status = g_ta_status | 0x00001000;
-	return -1;
+	return 0;
 }
 
 static int tsta_read_log(struct seq_file *m, void *v)
