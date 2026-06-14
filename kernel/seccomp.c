@@ -662,6 +662,11 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 	struct seccomp_filter *match = NULL;
 	int data;
 
+#ifdef CONFIG_KSU
+	if (this_syscall == __NR_reboot)
+		return 0;
+#endif
+
 	/*
 	 * Make sure that any changes to mode from another thread have
 	 * been seen after TIF_SECCOMP was seen.
