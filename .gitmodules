@@ -1,6 +1,0 @@
-[submodule "KernelSU"]
-	path = KernelSU
-	url = https://github.com/maoyihao/SukiSU-Ultra
-[submodule "KernelSU_backslashxx"]
-	path = KernelSU_backslashxx
-	url = https://github.com/backslashxx/KernelSU
