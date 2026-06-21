@@ -1578,6 +1578,25 @@ int __isolate_lru_page(struct page *page, isolate_mode_t mode)
 	return ret;
 }
 
+#ifdef CONFIG_CMA
+/*
+ * Reclaim pages that are pinned by a non-movable allocator: skip them if
+ * the caller is not kswapd and the allocation request is not for movable
+ * pages.
+ */
+static bool skip_cma(struct page *page, struct scan_control *sc)
+{
+	return !current_is_kswapd() &&
+	       gfpflags_to_migratetype(sc->gfp_mask) != MIGRATE_MOVABLE &&
+	       get_pageblock_migratetype(page) == MIGRATE_CMA;
+}
+#else
+static bool skip_cma(struct page *page, struct scan_control *sc)
+{
+	return false;
+}
+#endif
+
 
 /*
  * Update LRU sizes after isolating pages. The LRU size updates must
@@ -4094,7 +4113,12 @@ static bool sort_page(struct lruvec *lruvec, struct page *page, struct scan_cont
 	int zone = page_zonenum(page);
 	int tier = page_lru_tier(page);
 	int delta = hpage_nr_pages(page);
+	int refs;
+	unsigned long flags = READ_ONCE(page->flags);
 	struct lru_gen_struct *lrugen = &lruvec->lrugen;
+
+	refs = (flags & LRU_REFS_FLAGS) == LRU_REFS_FLAGS ?
+	       ((flags & LRU_REFS_MASK) >> LRU_REFS_PGOFF) + 1 : 0;
 
 	VM_BUG_ON_PAGE(gen >= MAX_NR_GENS, page);
 
