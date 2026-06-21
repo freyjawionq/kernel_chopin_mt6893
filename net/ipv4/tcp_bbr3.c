@@ -2328,6 +2328,8 @@ static size_t bbr3_get_info(struct sock *sk, u32 ext, int *attr,
 	return 0;
 }
 
+static struct tcp_congestion_ops tcp_bbr3_cong_ops;
+
 static int bbr3_seq_show(struct seq_file *seq, void *v)
 {
 	const struct tcp_sock *tp;
@@ -2382,7 +2384,7 @@ static int bbr3_seq_show(struct seq_file *seq, void *v)
 		   bbr->inflight_lo, bbr->inflight_hi,
 		   bbr3_extra_acked(sk),
 		   bbr->plb.enabled,
-		   tp->lost, tp->sacked, tp->retrans_out);
+		   tp->lost, tp->sacked_out, tp->retrans_out);
 	return 0;
 }
 

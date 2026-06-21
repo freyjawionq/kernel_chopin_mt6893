@@ -2641,6 +2641,8 @@ static void bbr2_set_state(struct sock *sk, u8 new_state)
 	}
 }
 
+static struct tcp_congestion_ops tcp_bbr2_cong_ops;
+
 static int bbr2_seq_show(struct seq_file *seq, void *v)
 {
 	const struct tcp_sock *tp;
@@ -2693,7 +2695,7 @@ static int bbr2_seq_show(struct seq_file *seq, void *v)
 		   ((bbr->cwnd_gain & (BBR_UNIT - 1)) * 100) >> BBR_SCALE,
 		   bbr->inflight_lo, bbr->inflight_hi,
 		   bbr_extra_acked(sk),
-		   tp->lost, tp->sacked, tp->retrans_out);
+		   tp->lost, tp->sacked_out, tp->retrans_out);
 	return 0;
 }
 
