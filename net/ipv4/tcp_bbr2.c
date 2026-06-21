@@ -62,6 +62,7 @@
 #include <linux/inet_diag.h>
 #include <linux/inet.h>
 #include <linux/random.h>
+#include <linux/seq_file_net.h>
 
 #include "tcp_dctcp.h"
 
@@ -2640,6 +2641,75 @@ static void bbr2_set_state(struct sock *sk, u8 new_state)
 	}
 }
 
+static int bbr2_seq_show(struct seq_file *seq, void *v)
+{
+	const struct tcp_sock *tp;
+	struct bbr *bbr;
+	struct sock *sk;
+
+	if (v == SEQ_START_TOKEN) {
+		seq_puts(seq,
+			 "local                 peer                  "
+			 "mode phase cwnd srtt_us minrtt_us "
+			 "bw_bps bw_lo_bps bw_hi_bps "
+			 "pacing_gain cwnd_gain "
+			 "inflight_lo inflight_hi extra_acked "
+			 "lost sacked retrans\n");
+		return 0;
+	}
+
+	sk = (struct sock *)v;
+	if (!sk || inet_csk(sk)->icsk_ca_ops != &tcp_bbr2_cong_ops)
+		return 0;
+
+	bbr = inet_csk_ca(sk);
+	tp = tcp_sk(sk);
+
+	if (sk->sk_family == AF_INET) {
+		seq_printf(seq, "%pI4:%u %pI4:%u ",
+			   &inet_sk(sk)->inet_rcv_saddr,
+			   ntohs(inet_sk(sk)->inet_sport),
+			   &inet_sk(sk)->inet_daddr,
+			   ntohs(inet_sk(sk)->inet_dport));
+	} else {
+		seq_printf(seq, "[%pI6c]:%u [%pI6c]:%u ",
+			   &sk->sk_v6_rcv_saddr,
+			   ntohs(inet_sk(sk)->inet_sport),
+			   &sk->sk_v6_daddr,
+			   ntohs(inet_sk(sk)->inet_dport));
+	}
+
+	seq_printf(seq, "%u %u %u %u %u %llu %llu %llu %u %u %u %u %u %u %u %u\n",
+		   bbr->mode, bbr2_get_phase(bbr),
+		   tp->snd_cwnd, tp->srtt_us >> 3, bbr->min_rtt_us,
+		   bbr_bw_bytes_per_sec(sk, bbr_bw(sk)),
+		   bbr_bw_bytes_per_sec(sk, bbr->bw_lo),
+		   bbr_bw_bytes_per_sec(sk, bbr_max_bw(sk)),
+		   bbr->pacing_gain >> BBR_SCALE,
+		   bbr->cwnd_gain >> BBR_SCALE,
+		   bbr->inflight_lo, bbr->inflight_hi,
+		   bbr_extra_acked(sk),
+		   tp->lost, tp->sacked, tp->retrans_out);
+	return 0;
+}
+
+static const struct file_operations bbr2_seq_fops = {
+	.owner		= THIS_MODULE,
+	.open		= tcp_seq_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= seq_release_net,
+};
+
+static struct tcp_seq_afinfo bbr2_seq_afinfo = {
+	.name		= "tcp_bbr2_stats",
+	.family		= AF_UNSPEC,
+	.seq_fops	= &bbr2_seq_fops,
+	.seq_ops	= {
+		.show		= bbr2_seq_show,
+	},
+};
+
 static struct tcp_congestion_ops tcp_bbr2_cong_ops __read_mostly = {
 	.flags		= TCP_CONG_NON_RESTRICTED | TCP_CONG_WANTS_CE_EVENTS,
 	.name		= "bbr2",
@@ -2658,12 +2728,23 @@ static struct tcp_congestion_ops tcp_bbr2_cong_ops __read_mostly = {
 
 static int __init bbr_register(void)
 {
+	int rc;
+
 	BUILD_BUG_ON(sizeof(struct bbr) > ICSK_CA_PRIV_SIZE);
-	return tcp_register_congestion_control(&tcp_bbr2_cong_ops);
+	rc = tcp_register_congestion_control(&tcp_bbr2_cong_ops);
+	if (rc)
+		return rc;
+	rc = tcp_proc_register(&init_net, &bbr2_seq_afinfo);
+	if (rc) {
+		tcp_unregister_congestion_control(&tcp_bbr2_cong_ops);
+		return rc;
+	}
+	return 0;
 }
 
 static void __exit bbr_unregister(void)
 {
+	tcp_proc_unregister(&init_net, &bbr2_seq_afinfo);
 	tcp_unregister_congestion_control(&tcp_bbr2_cong_ops);
 }
 
