@@ -11,7 +11,7 @@ DATE=$(date '+%Y%m%d-%H%M')
 # Device
 DEVICE="${1:-agate}"
 DEFCONFIG="${DEVICE}_defconfig"
-ZIPNAME="HydrogenKernel-${DEVICE}-${DATE}.zip"
+ZIPNAME="CustomKernel-${DEVICE}-${DATE}.zip"
 
 echo -e "Building for: $DEVICE\n"
 
@@ -33,7 +33,7 @@ for arg in "$@"; do
     case $arg in
         -c) CLEAN_BUILD=true ;;
         -ksu) INCLUDE_KSU=true
-             ZIPNAME="HydrogenKernel-KSU-${DEVICE}-${DATE}.zip"
+             ZIPNAME="CustomKernel-KSU-${DEVICE}-${DATE}.zip"
              ;;
     esac
 done
@@ -48,11 +48,11 @@ make O=out ARCH=arm64 $DEFCONFIG
 echo -e "\nStarting compilation...\n"
 if make -j$(nproc --all) O=out ARCH=arm64 CC="ccache clang" LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- Image.gz; then
     echo -e "\nKernel compiled successfully! Zipping up...\n"
-    git clone -q --depth=1 https://github.com/rio004/AnyKernel3 AnyKernel3
-    cp out/arch/arm64/boot/Image.gz AnyKernel3
+    AK3_DIR="$HOME/AnyKernel3"
+    rm -f "$AK3_DIR/Image.gz" "$AK3_DIR/"*.zip
+    cp out/arch/arm64/boot/Image.gz "$AK3_DIR/"
     rm -rf *zip out/arch/arm64/boot
-    (cd AnyKernel3 && zip -r9 "../$ZIPNAME" * -x '*.git*' README.md *placeholder)
-    rm -rf AnyKernel3
+    (cd "$AK3_DIR" && zip -r9 "$CURRENT_DIR/$ZIPNAME" * -x '*.git*' README.md *placeholder)
     if [ "$INCLUDE_KSU" = true ]; then
         git restore drivers/{Makefile,Kconfig}
         rm -rf KernelSU drivers/kernelsu
