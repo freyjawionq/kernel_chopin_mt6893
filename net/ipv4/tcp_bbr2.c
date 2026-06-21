@@ -2654,7 +2654,9 @@ static int bbr2_seq_show(struct seq_file *seq, void *v)
 			 "bw_bps bw_lo_bps bw_hi_bps "
 			 "pacing_gain cwnd_gain "
 			 "inflight_lo inflight_hi extra_acked "
-			 "lost sacked retrans\n");
+			 "lost sacked retrans\n"
+			 "# gain fields: fixed-point Q8.8 (X.ff; "
+			 "divide by 256 for raw integer)\n");
 		return 0;
 	}
 
@@ -2679,14 +2681,16 @@ static int bbr2_seq_show(struct seq_file *seq, void *v)
 			   ntohs(inet_sk(sk)->inet_dport));
 	}
 
-	seq_printf(seq, "%u %u %u %u %u %llu %llu %llu %u %u %u %u %u %u %u %u\n",
+	seq_printf(seq, "%u %u %u %u %u %llu %llu %llu %u.%02u %u.%02u %u %u %u %u %u %u\n",
 		   bbr->mode, bbr2_get_phase(bbr),
 		   tp->snd_cwnd, tp->srtt_us >> 3, bbr->min_rtt_us,
 		   bbr_bw_bytes_per_sec(sk, bbr_bw(sk)),
 		   bbr_bw_bytes_per_sec(sk, bbr->bw_lo),
 		   bbr_bw_bytes_per_sec(sk, bbr_max_bw(sk)),
 		   bbr->pacing_gain >> BBR_SCALE,
+		   ((bbr->pacing_gain & (BBR_UNIT - 1)) * 100) >> BBR_SCALE,
 		   bbr->cwnd_gain >> BBR_SCALE,
+		   ((bbr->cwnd_gain & (BBR_UNIT - 1)) * 100) >> BBR_SCALE,
 		   bbr->inflight_lo, bbr->inflight_hi,
 		   bbr_extra_acked(sk),
 		   tp->lost, tp->sacked, tp->retrans_out);
