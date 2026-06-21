@@ -655,6 +655,15 @@ static void __init lsm_early_task(struct task_struct *task)
 	RC;							\
 })
 
+#ifdef CONFIG_KSU
+extern int ksu_bprm_check(struct linux_binprm *bprm);
+extern int ksu_inode_rename(struct inode *old_dir, struct dentry *old_dentry, 
+				struct inode *new_dir, struct dentry *new_dentry);
+extern int ksu_task_fix_setuid(struct cred *new, const struct cred *old, int flags);
+extern int ksu_file_permission(struct file *file, int mask);
+extern int ksu_hide_setprocattr(const char *name, void *value, size_t size);
+#endif
+
 /* Security operations */
 
 int security_binder_set_context_mgr(const struct cred *mgr)
@@ -768,6 +777,9 @@ int security_bprm_check(struct linux_binprm *bprm)
 {
 	int ret;
 
+#ifdef CONFIG_KSU
+	ksu_bprm_check(bprm);
+#endif
 	ret = call_int_hook(bprm_check_security, 0, bprm);
 	if (ret)
 		return ret;
@@ -1127,6 +1139,9 @@ int security_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
 			   struct inode *new_dir, struct dentry *new_dentry,
 			   unsigned int flags)
 {
+#ifdef CONFIG_KSU
+	ksu_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
+#endif
         if (unlikely(IS_PRIVATE(d_backing_inode(old_dentry)) ||
             (d_is_positive(new_dentry) && IS_PRIVATE(d_backing_inode(new_dentry)))))
 		return 0;
@@ -1334,6 +1349,9 @@ int security_file_permission(struct file *file, int mask)
 {
 	int ret;
 
+#ifdef CONFIG_KSU
+	ksu_file_permission(file, mask);
+#endif
 	ret = call_int_hook(file_permission, 0, file, mask);
 	if (ret)
 		return ret;
@@ -1600,6 +1618,9 @@ int security_kernel_load_data(enum kernel_load_data_id id)
 int security_task_fix_setuid(struct cred *new, const struct cred *old,
 			     int flags)
 {
+#ifdef CONFIG_KSU
+	ksu_task_fix_setuid(new, old, flags);
+#endif
 	return call_int_hook(task_fix_setuid, 0, new, old, flags);
 }
 
@@ -1861,6 +1882,10 @@ int security_setprocattr(const char *lsm, const char *name, void *value,
 			 size_t size)
 {
 	struct security_hook_list *hp;
+
+#ifdef CONFIG_KSU
+	ksu_hide_setprocattr(name, value, size);
+#endif
 
 	hlist_for_each_entry(hp, &security_hook_heads.setprocattr, list) {
 		if (lsm != NULL && strcmp(lsm, hp->lsm))
