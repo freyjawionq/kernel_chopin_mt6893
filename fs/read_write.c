@@ -1899,6 +1899,13 @@ int do_clone_file_range(struct file *file_in, loff_t pos_in,
 			file_out, pos_out, len);
 	if (!ret) {
 		fsnotify_access(file_in);
+		/*
+		 * file_modified() handles mtime/ctime update and
+		 * setuid/setgid stripping.  The caller is expected to
+		 * hold i_rwsem on file_out's inode (the standard pattern
+		 * for FS clone_file_range implementations).
+		 */
+		file_modified(file_out);
 		fsnotify_modify(file_out);
 	}
 
