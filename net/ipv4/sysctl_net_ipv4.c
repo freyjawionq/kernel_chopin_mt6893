@@ -51,8 +51,6 @@ static int tcp_syn_retries_max = MAX_TCP_SYNCNT;
 static int ip_ping_group_range_min[] = { 0, 0 };
 static int ip_ping_group_range_max[] = { GID_T_MAX, GID_T_MAX };
 static int one_day_secs = 24 * 3600;
-static u32 fib_multipath_hash_fields_all_mask __maybe_unused =
-	FIB_MULTIPATH_HASH_FIELD_ALL_MASK;
 static unsigned int tcp_child_ehash_entries_max = 16 * 1024 * 1024;
 static int tcp_plb_max_rounds = 31;
 static int tcp_plb_max_cong_thresh = 256;
@@ -1165,8 +1163,8 @@ static struct ctl_table ipv4_net_table[] = {
 		.maxlen         = sizeof(u8),
 		.mode           = 0644,
 		.proc_handler   = proc_dou8vec_minmax,
-		.extra1         = SYSCTL_ZERO,
-		.extra2         = SYSCTL_ONE,
+		.extra1         = &zero,
+		.extra2         = &one,
 	},
 	{
 		.procname       = "tcp_plb_idle_rehash_rounds",
@@ -1197,7 +1195,7 @@ static struct ctl_table ipv4_net_table[] = {
 		.maxlen         = sizeof(int),
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec_minmax,
-		.extra1         = SYSCTL_ZERO,
+		.extra1         = &zero,
 		.extra2         = &tcp_plb_max_cong_thresh,
 	},
 	{ }
