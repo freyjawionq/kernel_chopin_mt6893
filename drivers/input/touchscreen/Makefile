@@ -2,6 +2,7 @@
 #
 # Makefile for the touchscreen drivers.
 #
+subdir-ccflags-y += $(DISABLE_LTO)
 
 # Each configuration option enables a list of files.
 
