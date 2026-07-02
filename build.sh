@@ -23,7 +23,7 @@ function compile()
     CLANG_DIR="/home/afifnaxxwahana3/toolchains/aosp-clang"
     GCC_DIR="/home/afifnaxxwahana3/toolchains/arm-gnu"
 
-    PATH="${CLANG_DIR}:${GCC_DIR}/bin:${PATH}" \
+    PATH="${CLANG_DIR}/bin:${GCC_DIR}/bin:${PATH}" \
     make -j$(nproc --all) O=out \
                           ARCH=arm64 \
                           CC="clang" \
