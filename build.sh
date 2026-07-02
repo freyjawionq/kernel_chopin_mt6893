@@ -41,11 +41,11 @@ function compile()
                           OBJDUMP=llvm-objdump \
                           CONFIG_NO_ERROR_ON_MISMATCH=y 2>&1 | tee error.log 
 
-    if [ -f "out/arch/arm64/boot/Image.gz" ]; then
+    if [ -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
         echo -e "\nKernel compiled successfully! Zipping up...\n"
         rm -rf AnyKernel3
         git clone -q --depth=1 https://github.com/froyoandroid/AnyKernel3 AnyKernel3
-        cp out/arch/arm64/boot/Image.gz AnyKernel3/
+        cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
 
         # Package ST NFC Fix files
         mkdir -p AnyKernel3/ksu_files
