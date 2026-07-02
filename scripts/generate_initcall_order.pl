@@ -171,7 +171,8 @@ sub process_objects {
 ## @objects in link order
 sub find_objects {
 	while (my $file = shift(@ARGV)) {
-		my $pid = open (my $fh, "\"$ar\" t \"$file\" 2>/dev/null |")
+		my $filepath = (-f $file) ? $file : "$objtree/$file";
+		my $pid = open (my $fh, "\"$ar\" t \"$filepath\" 2>/dev/null |")
 			or die "$0: failed to execute $ar: $!";
 
 		my @output;
