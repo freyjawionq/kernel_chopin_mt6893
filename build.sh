@@ -5,7 +5,17 @@ function compile()
     source ~/.bashrc && source ~/.profile
     export LC_ALL=C
     export ARCH=arm64
-    export LOCALVERSION='-Ciallo~'
+
+    # Read and increment build version
+    VERSION_FILE="/home/afifnaxxwahana3/kernel_source/build_version.txt"
+    if [ ! -f "$VERSION_FILE" ]; then
+        echo "1" > "$VERSION_FILE"
+    fi
+    VERSION=$(cat "$VERSION_FILE")
+    VERSION_STR=$(printf "%04d" "$VERSION")
+    DATE_STR=$(date '+%Y%m%d')
+    
+    export LOCALVERSION="-ngegga-v1-${DATE_STR}-${VERSION_STR}"
 
     # Support cleaning build
     if [ "$1" = "-c" ] || [ "$1" = "clean" ]; then
@@ -47,8 +57,10 @@ function compile()
         git clone -q --depth=1 https://github.com/froyoandroid/AnyKernel3 AnyKernel3
         cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
 
+        # Increment build version for next run
+        echo $((VERSION + 1)) > "$VERSION_FILE"
 
-        ZIPNAME="Invincible-Chopin-chopin-KsuBackslashxx-$(date +%Y%m%d-%H%M).zip"
+        ZIPNAME="ngegga-kernel-v1-${DATE_STR}-${VERSION_STR}.zip"
         rm -rf *zip
         (cd AnyKernel3 && zip -r9 "../$ZIPNAME" * -x '*.git*' README.md *placeholder)
         rm -rf AnyKernel3
