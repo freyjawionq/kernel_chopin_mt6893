@@ -2623,7 +2623,7 @@ uint32_t nicCfgChipCapPhyCap(IN struct ADAPTER *prAdapter,
 	wlanCfgSetUint32(prAdapter, "P2pGoVHT", prAdapter->rWifiVar.ucP2pGoVht);
 	prAdapter->rWifiVar.ucP2pGcVht &= prPhyCap->ucVht;
 	wlanCfgSetUint32(prAdapter, "P2pGcVHT", prAdapter->rWifiVar.ucP2pGcVht);
-	prAdapter->fgIsHw5GBandDisabled = !prPhyCap->uc5gBand;
+	prAdapter->fgIsHw5GBandDisabled = FALSE; // Force FALSE for 5GHz Wifi Fix
 	prAdapter->rWifiVar.ucNSS = (prPhyCap->ucNss >
 		prAdapter->rWifiVar.ucNSS) ?
 		(prAdapter->rWifiVar.ucNSS):(prPhyCap->ucNss);

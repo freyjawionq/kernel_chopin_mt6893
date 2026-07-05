@@ -4810,8 +4810,7 @@ uint32_t wlanQueryNicCapability(IN struct ADAPTER
 		   prEventNicCapability->aucDateCode, 16);
 	prAdapter->rVerInfo.u2FwPeerVersion =
 		prEventNicCapability->u2DriverVersion;
-	prAdapter->fgIsHw5GBandDisabled =
-			(u_int8_t)prEventNicCapability->ucHw5GBandDisabled;
+	prAdapter->fgIsHw5GBandDisabled = FALSE; // Force FALSE for 5GHz Wifi Fix
 	prAdapter->fgIsEepromUsed =
 			(u_int8_t)prEventNicCapability->ucEepromUsed;
 	prAdapter->fgIsEmbbededMacAddrValid =
