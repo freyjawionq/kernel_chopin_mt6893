@@ -1069,11 +1069,10 @@ void wlanOnPostFirmwareReady(IN struct ADAPTER *prAdapter,
 	txPwrCtrlInit(prAdapter);
 #endif
 
-	/* Check hardware 5g band support */
-	if (prAdapter->fgIsHw5GBandDisabled)
-		prAdapter->fgEnable5GBand = FALSE;
-	else
-		prAdapter->fgEnable5GBand = TRUE;
+	/* Force 5GHz band enabled — MT6893 (SOC3_0) physically has 5GHz hardware.
+	 * fgIsHw5GBandDisabled may be incorrectly set by NVRAM/firmware region data. */
+	prAdapter->fgEnable5GBand = TRUE;
+	(void)prAdapter->fgIsHw5GBandDisabled;
 
 #if CFG_SUPPORT_NVRAM
 	/* load manufacture data */
@@ -5259,15 +5258,12 @@ uint32_t wlanLoadManufactureData(IN struct ADAPTER
 	}
 
 	/* 3. Check if needs to support 5GHz */
-	if (prRegInfo->ucEnable5GBand) {
-		/* check if it is disabled by hardware */
-		if (prAdapter->fgIsHw5GBandDisabled
-		    || prRegInfo->ucSupport5GBand == 0)
-			prAdapter->fgEnable5GBand = FALSE;
-		else
-			prAdapter->fgEnable5GBand = TRUE;
-	} else
-		prAdapter->fgEnable5GBand = FALSE;
+	/* Force-enable 5GHz regardless of NVRAM ucEnable5GBand/ucSupport5GBand
+	 * or hardware-disabled flag, since the hardware (SOC3_0/MT6893)
+	 * physically supports 5GHz and NVRAM regional data may be wrong. */
+	prAdapter->fgEnable5GBand = TRUE;
+	(void)prRegInfo->ucEnable5GBand;
+	(void)prRegInfo->ucSupport5GBand;
 
 	DBGLOG(INIT, INFO, "Enable5GBand = %d, Detail = [%d,%d,%d]",
 		prAdapter->fgEnable5GBand,
