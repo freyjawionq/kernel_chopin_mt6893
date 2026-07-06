@@ -7241,6 +7241,9 @@ void rlmDomainParsingChannel(IN struct wiphy *pWiphy)
 		for (ch_idx = 0; ch_idx < sband->n_channels; ch_idx++) {
 			chan = &sband->channels[ch_idx];
 			pCh = (rlmDomainGetActiveChannels() + ch_count);
+			if (band_idx == NL80211_BAND_2GHZ || band_idx == NL80211_BAND_5GHZ) {
+				chan->flags &= ~IEEE80211_CHAN_DISABLED;
+			}
 			/* Parse flags and get readable string */
 			rlmDomainChannelFlagString(chan->flags,
 						   chan_flag_string,
