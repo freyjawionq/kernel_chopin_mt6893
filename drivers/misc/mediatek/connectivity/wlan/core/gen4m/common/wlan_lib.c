@@ -1070,8 +1070,10 @@ void wlanOnPostFirmwareReady(IN struct ADAPTER *prAdapter,
 #endif
 
 	/* Check hardware 5g band support */
-	prAdapter->fgIsHw5GBandDisabled = FALSE;
-	prAdapter->fgEnable5GBand = TRUE;
+	if (prAdapter->fgIsHw5GBandDisabled)
+		prAdapter->fgEnable5GBand = FALSE;
+	else
+		prAdapter->fgEnable5GBand = TRUE;
 
 #if CFG_SUPPORT_NVRAM
 	/* load manufacture data */
@@ -4810,7 +4812,8 @@ uint32_t wlanQueryNicCapability(IN struct ADAPTER
 		   prEventNicCapability->aucDateCode, 16);
 	prAdapter->rVerInfo.u2FwPeerVersion =
 		prEventNicCapability->u2DriverVersion;
-	prAdapter->fgIsHw5GBandDisabled = FALSE; // Force FALSE for 5GHz Wifi Fix
+	prAdapter->fgIsHw5GBandDisabled =
+			(u_int8_t)prEventNicCapability->ucHw5GBandDisabled;
 	prAdapter->fgIsEepromUsed =
 			(u_int8_t)prEventNicCapability->ucEepromUsed;
 	prAdapter->fgIsEmbbededMacAddrValid =
@@ -5255,9 +5258,16 @@ uint32_t wlanLoadManufactureData(IN struct ADAPTER
 			/* prRegInfo->prNvramSettings->u2Part2PeerVersion; */
 	}
 
-	/* 3. Check if needs to support 5GHz (Forced TRUE for 5GHz Wifi Fix) */
-	prAdapter->fgEnable5GBand = TRUE;
-	prAdapter->fgIsHw5GBandDisabled = FALSE;
+	/* 3. Check if needs to support 5GHz */
+	if (prRegInfo->ucEnable5GBand) {
+		/* check if it is disabled by hardware */
+		if (prAdapter->fgIsHw5GBandDisabled
+		    || prRegInfo->ucSupport5GBand == 0)
+			prAdapter->fgEnable5GBand = FALSE;
+		else
+			prAdapter->fgEnable5GBand = TRUE;
+	} else
+		prAdapter->fgEnable5GBand = FALSE;
 
 	DBGLOG(INIT, INFO, "Enable5GBand = %d, Detail = [%d,%d,%d]",
 		prAdapter->fgEnable5GBand,
