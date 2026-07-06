@@ -5,6 +5,8 @@ function compile()
     source ~/.bashrc && source ~/.profile
     export LC_ALL=C
     export ARCH=arm64
+    export KBUILD_BUILD_USER="ngegga"
+    export KBUILD_BUILD_HOST="backslashxx"
 
     # Read and increment build version
     VERSION_FILE="/home/afifnaxxwahana3/kernel_source/build_version.txt"
