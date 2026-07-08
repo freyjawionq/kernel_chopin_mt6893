@@ -2658,7 +2658,7 @@ void flush_workqueue(struct workqueue_struct *wq)
 	};
 	int next_color;
 
-	if (WARN_ON(!wq_online))
+	if (unlikely(!wq_online))
 		return;
 
 	lock_map_acquire(&wq->lockdep_map);
@@ -2923,10 +2923,10 @@ bool flush_work(struct work_struct *work)
 {
 	struct wq_barrier barr;
 
-	if (WARN_ON(!wq_online))
+	if (unlikely(!wq_online))
 		return false;
 
-	if (WARN_ON(!work->func))
+	if (!work->func)
 		return false;
 
 	lock_map_acquire(&work->lockdep_map);

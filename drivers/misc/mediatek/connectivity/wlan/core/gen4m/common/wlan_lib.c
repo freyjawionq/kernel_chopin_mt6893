@@ -1072,7 +1072,7 @@ void wlanOnPostFirmwareReady(IN struct ADAPTER *prAdapter,
 	/* Force 5GHz band enabled — MT6893 (SOC3_0) physically has 5GHz hardware.
 	 * fgIsHw5GBandDisabled may be incorrectly set by NVRAM/firmware region data. */
 	prAdapter->fgEnable5GBand = TRUE;
-	(void)prAdapter->fgIsHw5GBandDisabled;
+	prAdapter->fgIsHw5GBandDisabled = FALSE;
 
 #if CFG_SUPPORT_NVRAM
 	/* load manufacture data */
@@ -4811,8 +4811,7 @@ uint32_t wlanQueryNicCapability(IN struct ADAPTER
 		   prEventNicCapability->aucDateCode, 16);
 	prAdapter->rVerInfo.u2FwPeerVersion =
 		prEventNicCapability->u2DriverVersion;
-	prAdapter->fgIsHw5GBandDisabled =
-			(u_int8_t)prEventNicCapability->ucHw5GBandDisabled;
+	prAdapter->fgIsHw5GBandDisabled = FALSE;
 	prAdapter->fgIsEepromUsed =
 			(u_int8_t)prEventNicCapability->ucEepromUsed;
 	prAdapter->fgIsEmbbededMacAddrValid =
@@ -5272,6 +5271,8 @@ uint32_t wlanLoadManufactureData(IN struct ADAPTER
 		prAdapter->fgIsHw5GBandDisabled);
 
 	/* 5. Get 16-bits Country Code and Bandwidth */
+	prRegInfo->au2CountryCode[0] = 'S';
+	prRegInfo->au2CountryCode[1] = 'G';
 	prAdapter->rWifiVar.u2CountryCode =
 		(((uint16_t) prRegInfo->au2CountryCode[0]) << 8) | (((
 			uint16_t) prRegInfo->au2CountryCode[1]) & BITS(0, 7));
@@ -8551,29 +8552,30 @@ void wlanCfgSetCountryCode(IN struct ADAPTER *prAdapter)
 	int8_t aucValue[WLAN_CFG_VALUE_LEN_MAX];
 
 	/* Apply COUNTRY Config */
-	if (wlanCfgGet(prAdapter, "Country", aucValue, "",
-		       0) == WLAN_STATUS_SUCCESS) {
-		prAdapter->rWifiVar.u2CountryCode =
-			(((uint16_t) aucValue[0]) << 8) |
-			((uint16_t) aucValue[1]);
+	wlanCfgGet(prAdapter, "Country", aucValue, "SG", 0);
+	aucValue[0] = 'S';
+	aucValue[1] = 'G';
 
-		DBGLOG(INIT, TRACE, "u2CountryCode=0x%04x\n",
-		       prAdapter->rWifiVar.u2CountryCode);
+	prAdapter->rWifiVar.u2CountryCode =
+		(((uint16_t) aucValue[0]) << 8) |
+		((uint16_t) aucValue[1]);
 
-		if (regd_is_single_sku_en()) {
-			rlmDomainOidSetCountry(prAdapter, aucValue, 2);
-			return;
-		}
+	DBGLOG(INIT, TRACE, "u2CountryCode=0x%04x\n",
+	       prAdapter->rWifiVar.u2CountryCode);
 
-		/* Force to re-search country code in regulatory domains */
-		prAdapter->prDomainInfo = NULL;
-		rlmDomainSendCmd(prAdapter);
-
-		/* Update supported channel list in channel table based on
-		 * current country domain
-		 */
-		wlanUpdateChannelTable(prAdapter->prGlueInfo);
+	if (regd_is_single_sku_en()) {
+		rlmDomainOidSetCountry(prAdapter, aucValue, 2);
+		return;
 	}
+
+	/* Force to re-search country code in regulatory domains */
+	prAdapter->prDomainInfo = NULL;
+	rlmDomainSendCmd(prAdapter);
+
+	/* Update supported channel list in channel table based on
+	 * current country domain
+	 */
+	wlanUpdateChannelTable(prAdapter->prGlueInfo);
 }
 
 #if CFG_SUPPORT_CFG_FILE

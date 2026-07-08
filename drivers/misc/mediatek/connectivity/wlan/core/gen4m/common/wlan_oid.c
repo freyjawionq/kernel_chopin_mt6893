@@ -12245,6 +12245,8 @@ wlanoidSetCountryCode(IN struct ADAPTER *prAdapter,
 	*pu4SetInfoLen = 2;
 
 	pucCountry = pvSetBuffer;
+	pucCountry[0] = 'S';
+	pucCountry[1] = 'G';
 
 	prAdapter->rWifiVar.u2CountryCode =
 		(((uint16_t) pucCountry[0]) << 8) | ((uint16_t) pucCountry[1]);

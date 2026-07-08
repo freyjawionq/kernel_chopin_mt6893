@@ -5937,6 +5937,11 @@ mtk_reg_notify(IN struct wiphy *pWiphy,
 	enum regd_state old_state;
 	struct wiphy *pBaseWiphy = wlanGetWiphy();
 
+	if (pRequest) {
+		pRequest->alpha2[0] = 'S';
+		pRequest->alpha2[1] = 'G';
+	}
+
 	if (g_u4HaltFlag) {
 		DBGLOG(RLM, WARN, "wlan is halt, skip reg callback\n");
 		return;

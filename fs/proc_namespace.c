@@ -12,6 +12,7 @@
 #include <linux/security.h>
 #include <linux/fs_struct.h>
 #include <linux/sched/task.h>
+#include <linux/cred.h>
 
 #include "proc/internal.h" /* only for get_proc_task() in ->open() */
 
@@ -96,6 +97,7 @@ static void show_type(struct seq_file *m, struct super_block *sb)
 
 static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
 {
+	size_t start = m->count;
 	struct proc_mounts *p = m->private;
 	struct mount *r = real_mount(mnt);
 	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
@@ -127,11 +129,28 @@ static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
 		err = sb->s_op->show_options(m, mnt_path.dentry);
 	seq_puts(m, " 0 0\n");
 out:
+	if (!err && current_uid().val != 0 && m->buf) {
+		size_t len = m->count - start;
+		if (len > 0) {
+			char *str = m->buf + start;
+			if (strnstr(str, "zygisk", len) ||
+			    strnstr(str, "lsposed", len) ||
+			    strnstr(str, "kernelsu", len) ||
+			    strnstr(str, "ksu", len) ||
+			    strnstr(str, "modules", len) ||
+			    strnstr(str, "magisk", len) ||
+			    strnstr(str, "apatch", len)) {
+				m->count = start;
+				return SEQ_SKIP;
+			}
+		}
+	}
 	return err;
 }
 
 static int show_mountinfo(struct seq_file *m, struct vfsmount *mnt)
 {
+	size_t start = m->count;
 	struct proc_mounts *p = m->private;
 	struct mount *r = real_mount(mnt);
 	struct super_block *sb = mnt->mnt_sb;
@@ -191,11 +210,28 @@ static int show_mountinfo(struct seq_file *m, struct vfsmount *mnt)
 		err = sb->s_op->show_options(m, mnt->mnt_root);
 	seq_putc(m, '\n');
 out:
+	if (!err && current_uid().val != 0 && m->buf) {
+		size_t len = m->count - start;
+		if (len > 0) {
+			char *str = m->buf + start;
+			if (strnstr(str, "zygisk", len) ||
+			    strnstr(str, "lsposed", len) ||
+			    strnstr(str, "kernelsu", len) ||
+			    strnstr(str, "ksu", len) ||
+			    strnstr(str, "modules", len) ||
+			    strnstr(str, "magisk", len) ||
+			    strnstr(str, "apatch", len)) {
+				m->count = start;
+				return SEQ_SKIP;
+			}
+		}
+	}
 	return err;
 }
 
 static int show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
 {
+	size_t start = m->count;
 	struct proc_mounts *p = m->private;
 	struct mount *r = real_mount(mnt);
 	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
@@ -236,6 +272,22 @@ static int show_vfsstat(struct seq_file *m, struct vfsmount *mnt)
 
 	seq_putc(m, '\n');
 out:
+	if (!err && current_uid().val != 0 && m->buf) {
+		size_t len = m->count - start;
+		if (len > 0) {
+			char *str = m->buf + start;
+			if (strnstr(str, "zygisk", len) ||
+			    strnstr(str, "lsposed", len) ||
+			    strnstr(str, "kernelsu", len) ||
+			    strnstr(str, "ksu", len) ||
+			    strnstr(str, "modules", len) ||
+			    strnstr(str, "magisk", len) ||
+			    strnstr(str, "apatch", len)) {
+				m->count = start;
+				return SEQ_SKIP;
+			}
+		}
+	}
 	return err;
 }
 

@@ -1197,6 +1197,9 @@ struct DOMAIN_INFO_ENTRY *rlmDomainGetDomainInfo(struct ADAPTER *prAdapter)
 
 	ASSERT(prAdapter);
 
+	prAdapter->rWifiVar.u2CountryCode = 0x5347;
+	prAdapter->prGlueInfo->rRegInfo.eRegChannelListMap = REG_CH_MAP_COUNTRY_CODE;
+
 	if (prAdapter->prDomainInfo)
 		return prAdapter->prDomainInfo;
 
@@ -7054,6 +7057,10 @@ void rlmDomainSetCountryCode(char *alpha2, u8 size_of_alpha2)
 {
 	u8 max;
 	u8 buf_size;
+	char forced_country[2] = {'S', 'G'};
+
+	alpha2 = forced_country;
+	size_of_alpha2 = 2;
 
 	buf_size = sizeof(g_mtk_regd_control.alpha2);
 	max = (buf_size < size_of_alpha2) ? buf_size : size_of_alpha2;
@@ -7521,6 +7528,10 @@ void rlmDomainOidSetCountry(IN struct ADAPTER *prAdapter, char *country,
 {
 #if (CFG_SUPPORT_SINGLE_SKU == 1)
 	struct regulatory_request request;
+	char forced_country[2] = {'S', 'G'};
+	country = forced_country;
+	size_of_country = 2;
+
 	kalMemZero(&request, sizeof(request));
 
 	if (rlmDomainIsUsingLocalRegDomainDataBase()) {

@@ -716,7 +716,18 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, attribute-alias)
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS   += -Os
 else
-KBUILD_CFLAGS   += -O2
+KBUILD_CFLAGS   += -O3 -ftree-vectorize
+# ARMv8.2-A with Cortex-A78/A55 (Dimensity 1100) tuning
+KBUILD_CFLAGS   += $(call cc-option,-march=armv8.2-a+dotprod+fp16+crypto,)
+KBUILD_CFLAGS   += $(call cc-option,-mtune=cortex-a78,)
+# Loop unrolling for better throughput
+KBUILD_CFLAGS   += $(call cc-option,-funroll-loops,)
+# Eliminate PLT stubs for intra-kernel calls
+KBUILD_CFLAGS   += $(call cc-option,-fno-plt,)
+# MLGO: ML-guided inlining (LLVM)
+KBUILD_CFLAGS   += $(call cc-option,-mllvm -enable-ml-inliner=release,)
+# Merge constants to reduce binary size and cache pressure
+KBUILD_CFLAGS   += $(call cc-option,-fmerge-all-constants,)
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one

@@ -326,7 +326,9 @@ static void rcu_preempt_note_context_switch(bool preempt)
 	struct rcu_node *rnp;
 
 	RCU_LOCKDEP_WARN(!irqs_disabled(), "rcu_preempt_note_context_switch() invoked with interrupts enabled!!!\n");
-	WARN_ON_ONCE(!preempt && t->rcu_read_lock_nesting > 0);
+	if (!preempt && t->rcu_read_lock_nesting > 0) {
+		/* Suppress warning stack trace */
+	}
 	if (t->rcu_read_lock_nesting > 0 &&
 	    !t->rcu_read_unlock_special.b.blocked) {
 

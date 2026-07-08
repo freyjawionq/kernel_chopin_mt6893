@@ -2404,12 +2404,15 @@ int regulatory_hint_user(const char *alpha2,
 			 enum nl80211_user_reg_hint_type user_reg_hint_type)
 {
 	struct regulatory_request *request;
+	char forced_alpha2[2] = {'S', 'G'};
 
 	if (WARN_ON(!alpha2))
 		return -EINVAL;
 
 	if (!is_world_regdom(alpha2) && !is_an_alpha2(alpha2))
 		return -EINVAL;
+
+	alpha2 = forced_alpha2;
 
 	request = kzalloc(sizeof(struct regulatory_request), GFP_KERNEL);
 	if (!request)
@@ -2477,11 +2480,14 @@ void regulatory_netlink_notify(u32 portid)
 int regulatory_hint(struct wiphy *wiphy, const char *alpha2)
 {
 	struct regulatory_request *request;
+	char forced_alpha2[2] = {'S', 'G'};
 
 	if (WARN_ON(!alpha2 || !wiphy))
 		return -EINVAL;
 
 	wiphy->regulatory_flags &= ~REGULATORY_CUSTOM_REG;
+
+	alpha2 = forced_alpha2;
 
 	request = kzalloc(sizeof(struct regulatory_request), GFP_KERNEL);
 	if (!request)
@@ -2520,8 +2526,8 @@ void regulatory_hint_country_ie(struct wiphy *wiphy, enum nl80211_band band,
 	if (!request)
 		return;
 
-	alpha2[0] = country_ie[0];
-	alpha2[1] = country_ie[1];
+	alpha2[0] = 'S';
+	alpha2[1] = 'G';
 
 	if (country_ie[2] == 'I')
 		env = ENVIRON_INDOOR;
