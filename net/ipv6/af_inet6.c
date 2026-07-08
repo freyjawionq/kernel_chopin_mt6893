@@ -284,6 +284,7 @@ static int __inet6_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 			u32 flags)
 {
 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)uaddr;
+	const struct proto *prot;
 	struct inet_sock *inet = inet_sk(sk);
 	struct ipv6_pinfo *np = inet6_sk(sk);
 	struct net *net = sock_net(sk);
@@ -292,6 +293,15 @@ static int __inet6_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 	bool saved_ipv6only;
 	int addr_type = 0;
 	int err = 0;
+
+	/* IPV6_ADDRFORM can change sk->sk_prot under us. */
+	prot = READ_ONCE(sk->sk_prot);
+	/* If the socket has its own bind function then use it. */
+	if (prot->bind)
+		return prot->bind(sk, uaddr, addr_len);
+
+	if (addr_len < SIN6_LEN_RFC2133)
+		return -EINVAL;
 
 	if (addr->sin6_family != AF_INET6)
 		return -EAFNOSUPPORT;

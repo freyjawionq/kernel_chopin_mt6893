@@ -1034,6 +1034,14 @@ static bool blk_mq_dispatch_wait_add(struct blk_mq_hw_ctx *hctx)
 	 * and unlock the bit.
 	 */
 	add_wait_queue(&ws->wait, &hctx->dispatch_wait);
+
+	/*
+	 * Order adding us to the wait queue and checking for driver tags.
+	 * This pairs with sbitmap_queue_clear() waking waiters after clearing
+	 * tag bits.
+	 */
+	smp_mb();
+
 	return true;
 }
 
@@ -1360,6 +1368,12 @@ void blk_mq_start_stopped_hw_queue(struct blk_mq_hw_ctx *hctx, bool async)
 		return;
 
 	clear_bit(BLK_MQ_S_STOPPED, &hctx->state);
+	/*
+	 * Pairs with the smp_mb() in blk_mq_hctx_stopped() to order the
+	 * clearing of BLK_MQ_S_STOPPED above and the checking of dispatch
+	 * list in the subsequent routine.
+	 */
+	smp_mb__after_atomic();
 	blk_mq_run_hw_queue(hctx, async);
 }
 EXPORT_SYMBOL_GPL(blk_mq_start_stopped_hw_queue);

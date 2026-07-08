@@ -121,6 +121,21 @@
 #endif
 #include <net/l3mdev.h>
 
+#ifdef CONFIG_ANDROID_PARANOID_NETWORK
+#include <linux/android_aid.h>
+
+static inline int current_has_network(void)
+{
+	return in_egroup_p(AID_INET) || capable(CAP_NET_RAW);
+}
+#else
+static inline int current_has_network(void)
+{
+	return 1;
+}
+#endif
+
+int sysctl_reserved_port_bind __read_mostly = 1;
 /* The inetsw table contains everything that inet_create needs to
  * build a new socket.
  */
@@ -569,7 +584,7 @@ int inet_dgram_connect(struct socket *sock, struct sockaddr *uaddr,
 		return prot->disconnect(sk, flags);
 
 	if (BPF_CGROUP_PRE_CONNECT_ENABLED(sk)) {
-		err = sk->sk_prot->pre_connect(sk, uaddr, addr_len);
+		err = prot->pre_connect(sk, uaddr, addr_len);
 		if (err)
 			return err;
 	}

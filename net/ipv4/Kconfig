@@ -503,7 +503,7 @@ config TCP_CONG_BIC
 
 config TCP_CONG_CUBIC
 	tristate "CUBIC TCP"
-	default y
+	default m
 	---help---
 	This is version 2.0 of BIC-TCP which uses a cubic growth function
 	among other techniques.
@@ -686,9 +686,49 @@ config TCP_CONG_BBR
 	bufferbloat, policers, or AQM schemes that do not provide a delay
 	signal. It requires the fq ("Fair Queue") pacing packet scheduler.
 
+config TCP_CONG_BBRPLUS
+	tristate "BBRPLUS TCP"
+	default n
+	---help---
+
+	BBRplus is an enhanced version of BBR (Bottleneck Bandwidth and RTT).
+	Originally introduced by dog250 & cx9208.
+	Same as BBR, requires the fq ("Fair Queue") pacing packet scheduler.
+
+config TCP_CONG_BBR2
+	tristate "BBR2 TCP"
+	default y
+	help
+
+	BBR2 TCP congestion control is a model-based congestion control
+	algorithm that aims to maximize network utilization, keep queues and
+	retransmit rates low, and to be able to coexist with Reno/CUBIC in
+	common scenarios. It builds an explicit model of the network path.  It
+	tolerates a targeted degree of random packet loss and delay that are
+	unrelated to congestion. It can operate over LAN, WAN, cellular, wifi,
+	or cable modem links, and can use DCTCP-L4S-style ECN signals.  It can
+	coexist with flows that use loss-based congestion control, and can
+	operate with shallow buffers, deep buffers, bufferbloat, policers, or
+	AQM schemes that do not provide a delay signal. It requires pacing,
+	using either TCP internal pacing or the fq ("Fair Queue") pacing packet
+	scheduler.
+
+config TCP_CONG_BBR3
+	tristate "BBRv3 TCP"
+	default n
+	help
+	  BBRv3 TCP congestion control as separate algorithm "bbr3".
+	  BBR is a model-based congestion control algorithm that aims for low queues,
+	  low loss, and (bounded) Reno/CUBIC coexistence. To maintain a model of the
+	  network path, it uses measurements of bandwidth and RTT, as well as (if they
+	  occur) packet loss and/or shallow-threshold ECN signals. Note that although
+	  it can use ECN or loss signals explicitly, it does not require either; it
+	  can bound its in-flight data based on its estimate of the BDP.
+
 choice
 	prompt "Default TCP congestion control"
-	default DEFAULT_BIC
+	default DEFAULT_BBR3 if TCP_CONG_BBR3
+	default DEFAULT_BBR2
 	help
 	  Select the TCP congestion control that will be used by default
 	  for all connections.
@@ -723,6 +763,15 @@ choice
 	config DEFAULT_BBR
 		bool "BBR" if TCP_CONG_BBR=y
 
+	config DEFAULT_BBRPLUS
+		bool "BBRPLUS" if TCP_CONG_BBRPLUS=y
+
+	config DEFAULT_BBR2
+		bool "BBR2" if TCP_CONG_BBR2=y
+
+	config DEFAULT_BBR3
+		bool "BBR3" if TCP_CONG_BBR3=y
+
 	config DEFAULT_RENO
 		bool "Reno"
 endchoice
@@ -730,6 +779,16 @@ endchoice
 endif
 
 config TCP_CONG_CUBIC
+	tristate
+	depends on !TCP_CONG_ADVANCED
+	default y
+
+config TCP_CONG_BBR2
+	tristate
+	depends on !TCP_CONG_ADVANCED
+	default y
+
+config TCP_CONG_BBR3
 	tristate
 	depends on !TCP_CONG_ADVANCED
 	default y
@@ -747,7 +806,11 @@ config DEFAULT_TCP_CONG
 	default "dctcp" if DEFAULT_DCTCP
 	default "cdg" if DEFAULT_CDG
 	default "bbr" if DEFAULT_BBR
+	default "bbrplus" if DEFAULT_BBRPLUS
+	default "bbr2" if DEFAULT_BBR2
+	default "bbr3" if DEFAULT_BBR3
 	default "cubic"
+
 
 config TCP_MD5SIG
 	bool "TCP: MD5 Signature Option support (RFC2385)"

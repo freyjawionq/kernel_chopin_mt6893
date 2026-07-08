@@ -51,6 +51,9 @@ static int tcp_syn_retries_max = MAX_TCP_SYNCNT;
 static int ip_ping_group_range_min[] = { 0, 0 };
 static int ip_ping_group_range_max[] = { GID_T_MAX, GID_T_MAX };
 static int one_day_secs = 24 * 3600;
+static unsigned int tcp_child_ehash_entries_max = 16 * 1024 * 1024;
+static int tcp_plb_max_rounds = 31;
+static int tcp_plb_max_cong_thresh = 256;
 
 /* obsolete */
 static int sysctl_tcp_low_latency __read_mostly;
@@ -217,8 +220,17 @@ static int proc_tcp_congestion_control(struct ctl_table *ctl, int write,
 	tcp_get_default_congestion_control(net, val);
 
 	ret = proc_dostring(&tbl, write, buffer, lenp, ppos);
-	if (write && ret == 0)
+	if (write && ret == 0) {
+		rcu_read_lock();
+		if (!strcmp(val, "bic")) {
+			if (tcp_ca_find("bbr3"))
+				strncpy(val, "bbr3", TCP_CA_NAME_MAX);
+			else if (tcp_ca_find("bbr2"))
+				strncpy(val, "bbr2", TCP_CA_NAME_MAX);
+		}
+		rcu_read_unlock();
 		ret = tcp_set_default_congestion_control(net, val);
+	}
 	return ret;
 }
 
@@ -603,15 +615,6 @@ static struct ctl_table ipv4_table[] = {
 		.proc_handler   = proc_dointvec
 	},
 	{
-		.procname	= "tcp_early_retrans",
-		.data		= &sysctl_tcp_early_retrans,
-		.maxlen		= sizeof(int),
-		.mode		= 0644,
-		.proc_handler	= proc_dointvec_minmax,
-		.extra1		= &zero,
-		.extra2		= &four,
-	},
-	{
 		.procname	= "tcp_min_tso_segs",
 		.data		= &sysctl_tcp_min_tso_segs,
 		.maxlen		= sizeof(int),
@@ -816,6 +819,13 @@ static struct ctl_table ipv4_net_table[] = {
 		.maxlen		= 65536,
 		.mode		= 0644,
 		.proc_handler	= proc_do_large_bitmap,
+	},
+	{
+		.procname       = "reserved_port_bind",
+		.data           = &sysctl_reserved_port_bind,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec
 	},
 	{
 		.procname	= "ip_no_pmtu_disc",
@@ -1137,6 +1147,56 @@ static struct ctl_table ipv4_net_table[] = {
 		.proc_handler   = proc_dointvec_minmax,
 		.extra1		= &three,
 		.extra2		= &hundred,
+	},
+	{
+		.procname	= "tcp_early_retrans",
+		.data		= &init_net.ipv4.sysctl_tcp_early_retrans,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= &four,
+	},
+	{
+		.procname       = "tcp_plb_enabled",
+		.data           = &init_net.ipv4.sysctl_tcp_plb_enabled,
+		.maxlen         = sizeof(u8),
+		.mode           = 0644,
+		.proc_handler   = proc_dou8vec_minmax,
+		.extra1         = &zero,
+		.extra2         = &one,
+	},
+	{
+		.procname       = "tcp_plb_idle_rehash_rounds",
+		.data           = &init_net.ipv4.sysctl_tcp_plb_idle_rehash_rounds,
+		.maxlen         = sizeof(u8),
+		.mode           = 0644,
+		.proc_handler   = proc_dou8vec_minmax,
+		.extra2		= &tcp_plb_max_rounds,
+	},
+	{
+		.procname       = "tcp_plb_rehash_rounds",
+		.data           = &init_net.ipv4.sysctl_tcp_plb_rehash_rounds,
+		.maxlen         = sizeof(u8),
+		.mode           = 0644,
+		.proc_handler   = proc_dou8vec_minmax,
+		.extra2         = &tcp_plb_max_rounds,
+	},
+	{
+		.procname       = "tcp_plb_suspend_rto_sec",
+		.data           = &init_net.ipv4.sysctl_tcp_plb_suspend_rto_sec,
+		.maxlen         = sizeof(u8),
+		.mode           = 0644,
+		.proc_handler   = proc_dou8vec_minmax,
+	},
+	{
+		.procname       = "tcp_plb_cong_thresh",
+		.data           = &init_net.ipv4.sysctl_tcp_plb_cong_thresh,
+		.maxlen         = sizeof(int),
+		.mode           = 0644,
+		.proc_handler   = proc_dointvec_minmax,
+		.extra1         = &zero,
+		.extra2         = &tcp_plb_max_cong_thresh,
 	},
 	{ }
 };

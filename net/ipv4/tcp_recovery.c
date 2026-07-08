@@ -7,8 +7,11 @@ int sysctl_tcp_recovery __read_mostly = TCP_RACK_LOSS_DETECTION;
 static void tcp_rack_mark_skb_lost(struct sock *sk, struct sk_buff *skb)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
+	const struct tcp_congestion_ops *ca_ops = inet_csk(sk)->icsk_ca_ops;
 
 	tcp_skb_mark_lost_uncond_verify(tp, skb);
+	if (ca_ops->skb_marked_lost)
+		ca_ops->skb_marked_lost(sk, skb);
 	if (TCP_SKB_CB(skb)->sacked & TCPCB_SACKED_RETRANS) {
 		/* Account for retransmits that are lost again */
 		TCP_SKB_CB(skb)->sacked &= ~TCPCB_SACKED_RETRANS;
@@ -117,7 +120,7 @@ bool tcp_rack_mark_lost(struct sock *sk)
 	tp->rack.advanced = 0;
 	tcp_rack_detect_loss(sk, &timeout);
 	if (timeout) {
-		timeout = usecs_to_jiffies(timeout) + TCP_TIMEOUT_MIN;
+		timeout = usecs_to_jiffies(timeout + TCP_TIMEOUT_MIN_US);
 		inet_csk_reset_xmit_timer(sk, ICSK_TIME_REO_TIMEOUT,
 					  timeout, inet_csk(sk)->icsk_rto);
 	}
