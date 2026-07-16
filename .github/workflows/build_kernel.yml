@@ -17,13 +17,12 @@ jobs:
       - name: Checkout Kernel Source
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Clone Embedded Repositories & Symlink KernelSU
         run: |
           echo "Cloning KernelSU..."
-          git clone https://github.com/backslashxx/KernelSU.git ${{ github.workspace }}/KernelSU
+          git clone --filter=blob:none https://github.com/backslashxx/KernelSU.git ${{ github.workspace }}/KernelSU
           cd ${{ github.workspace }}/KernelSU
           git checkout 9ce6fa4fab89f8c2f74eaa86f227739b97e1f933
           
@@ -75,7 +74,15 @@ jobs:
           echo "LC_ALL=C" >> $GITHUB_ENV
           echo "DATE_STR=$(date '+%Y%m%d')" >> $GITHUB_ENV
 
+      - name: Cache Clang Toolchain
+        id: cache-clang
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/toolchains/clang
+          key: clang-19.0.0git-20240801
+
       - name: Download AOSP Clang (ZyCromerZ mirror)
+        if: steps.cache-clang.outputs.cache-hit != 'true'
         run: |
           mkdir -p "${{ github.workspace }}/toolchains/clang"
           echo "Fetching latest ZyCromerZ Clang 19 release..."
@@ -101,6 +108,14 @@ jobs:
           git clone --depth=1 https://github.com/froyoandroid/AnyKernel3 \
             "${{ github.workspace }}/AnyKernel3"
 
+      - name: Cache CCache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ github.sha }}
+          restore-keys: |
+            ccache-
+
       - name: Build NonSusFS Variant
         id: build_nonsusfs
         run: |
@@ -109,6 +124,10 @@ jobs:
 
           export PATH="${CLANG_DIR}/bin:$PATH"
           export KBUILD_BUILD_TIMESTAMP="$(TZ='Asia/Jakarta' date)"
+          export USE_CCACHE=1
+          export CCACHE_DIR=~/.ccache
+          ccache -M 5G
+          ccache -s
 
           # Set defconfig to non-susfs
           sed -i 's/^CONFIG_KSU_SUSFS=y/# CONFIG_KSU_SUSFS is not set/' \
@@ -123,7 +142,7 @@ jobs:
           # Build
           make -j$(nproc --all) O=out \
             ARCH=arm64 \
-            CC=clang \
+            CC="ccache clang" \
             HOSTCC=gcc \
             HOSTLD=ld \
             CLANG_TRIPLE=aarch64-none-linux-gnu- \
@@ -137,6 +156,8 @@ jobs:
             OBJCOPY=llvm-objcopy \
             OBJDUMP=llvm-objdump \
             CONFIG_NO_ERROR_ON_MISMATCH=y 2>&1 | tee error.log
+
+          ccache -s
 
           if [ -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
             echo "BUILD_NONSUSFS_OK=true" >> $GITHUB_ENV
@@ -184,19 +205,22 @@ jobs:
 
           export PATH="${CLANG_DIR}/bin:$PATH"
           export KBUILD_BUILD_TIMESTAMP="$(TZ='Asia/Jakarta' date)"
+          export USE_CCACHE=1
+          export CCACHE_DIR=~/.ccache
+          ccache -s
 
           # Enable SusFS
           sed -i 's/^# CONFIG_KSU_SUSFS is not set/CONFIG_KSU_SUSFS=y/' \
             arch/arm64/configs/chopin_defconfig || true
 
-          # Clean out dir
-          rm -rf out && mkdir out
-
+          # We reuse the existing out directory for incremental build (much faster!)
+          # Generate config with SUSFS enabled
           make O=out ARCH=arm64 chopin_defconfig
 
+          # Build
           make -j$(nproc --all) O=out \
             ARCH=arm64 \
-            CC=clang \
+            CC="ccache clang" \
             HOSTCC=gcc \
             HOSTLD=ld \
             CLANG_TRIPLE=aarch64-none-linux-gnu- \
@@ -214,6 +238,8 @@ jobs:
           # Revert defconfig back to non-susfs (don't pollute the source)
           sed -i 's/^CONFIG_KSU_SUSFS=y/# CONFIG_KSU_SUSFS is not set/' \
             arch/arm64/configs/chopin_defconfig || true
+
+          ccache -s
 
           if [ -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
             echo "BUILD_SUSFS_OK=true" >> $GITHUB_ENV
