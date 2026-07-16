@@ -2,7 +2,7 @@ name: Build ChenXia Kernel (Chopin)
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, inc_ksu]
     paths-ignore:
       - 'README.md'
       - 'build_info_*.txt'
