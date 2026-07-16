@@ -1,0 +1,260 @@
+name: Build ChenXia Kernel (Chopin)
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - 'README.md'
+      - 'build_info_*.txt'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Kernel
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout Kernel Source
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            bc bison build-essential ccache curl flex \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+            git libelf-dev libssl-dev lz4 zip
+
+      - name: Set Build Variables
+        run: |
+          echo "ARCH=arm64" >> $GITHUB_ENV
+          echo "SUBARCH=arm64" >> $GITHUB_ENV
+          echo "KBUILD_BUILD_USER=ChenXia" >> $GITHUB_ENV
+          echo "KBUILD_BUILD_HOST=ChenXia" >> $GITHUB_ENV
+          echo "TZ=Asia/Jakarta" >> $GITHUB_ENV
+          echo "LC_ALL=C" >> $GITHUB_ENV
+          echo "DATE_STR=$(date '+%Y%m%d')" >> $GITHUB_ENV
+
+      - name: Download AOSP Clang r563880c
+        run: |
+          mkdir -p "${{ github.workspace }}/toolchains/clang"
+          echo "Downloading AOSP Clang r563880c..."
+          curl -LSs "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r563880c.tar.gz" \
+            -o clang.tar.gz || \
+          curl -LSs "https://github.com/ZyCromerZ/Clang/releases/download/19.0.0git-20240908-release/Clang-19.0.0git-20240908.tar.gz" \
+            -o clang.tar.gz
+          tar -xf clang.tar.gz -C "${{ github.workspace }}/toolchains/clang"
+          rm clang.tar.gz
+          echo "Clang version:"
+          "${{ github.workspace }}/toolchains/clang/bin/clang" --version || true
+
+      - name: Clone AnyKernel3 (froyoandroid)
+        run: |
+          git clone --depth=1 https://github.com/froyoandroid/AnyKernel3 \
+            "${{ github.workspace }}/AnyKernel3"
+
+      - name: Build NonSusFS Variant
+        id: build_nonsusfs
+        run: |
+          CLANG_DIR="${{ github.workspace }}/toolchains/clang"
+          KERNEL_DIR="${{ github.workspace }}"
+
+          export PATH="${CLANG_DIR}/bin:$PATH"
+          export KBUILD_BUILD_TIMESTAMP="$(TZ='Asia/Jakarta' date)"
+
+          # Set defconfig to non-susfs
+          sed -i 's/^CONFIG_KSU_SUSFS=y/# CONFIG_KSU_SUSFS is not set/' \
+            arch/arm64/configs/chopin_defconfig || true
+
+          # Clean out dir
+          rm -rf out && mkdir out
+
+          # Generate config
+          make O=out ARCH=arm64 chopin_defconfig
+
+          # Build
+          make -j$(nproc --all) O=out \
+            ARCH=arm64 \
+            CC=clang \
+            HOSTCC=gcc \
+            HOSTLD=ld \
+            CLANG_TRIPLE=aarch64-none-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            LD=ld.lld \
+            STRIP=llvm-strip \
+            AS=llvm-as \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            CONFIG_NO_ERROR_ON_MISMATCH=y 2>&1 | tee error.log
+
+          if [ -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
+            echo "BUILD_NONSUSFS_OK=true" >> $GITHUB_ENV
+          else
+            echo "NonSusFS build FAILED"
+            cat error.log | tail -50
+            exit 1
+          fi
+
+      - name: Package NonSusFS Variant
+        if: env.BUILD_NONSUSFS_OK == 'true'
+        run: |
+          CLANG_DIR="${{ github.workspace }}/toolchains/clang"
+          CLANG_RAW=$("${CLANG_DIR}/bin/clang" --version 2>/dev/null | head -1)
+          CLANG_VER=$(echo "$CLANG_RAW" | grep -oP 'clang version \K[0-9.]+' || echo "r563880c")
+          KV=$(grep -m1 "^VERSION" Makefile | awk '{print $3}')
+          KPL=$(grep -m1 "^PATCHLEVEL" Makefile | awk '{print $3}')
+          KSL=$(grep -m1 "^SUBLEVEL" Makefile | awk '{print $3}')
+          KERNEL_VER="${KV}.${KPL}.${KSL}"
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          BUILD_NUM="${{ github.run_number }}"
+          BUILD_NUM_PADDED=$(printf "%04d" "$BUILD_NUM")
+
+          ZIPNAME="ChenXia-kernel-v1-${{ env.DATE_STR }}-${BUILD_NUM_PADDED}-NonSusFS.zip"
+
+          cp out/arch/arm64/boot/Image.gz-dtb "${{ github.workspace }}/AnyKernel3/"
+          cd "${{ github.workspace }}/AnyKernel3"
+          zip -r9 "../${ZIPNAME}" * -x '*.git*' README.md '*placeholder' >/dev/null
+          cd "${{ github.workspace }}"
+
+          FILE_MD5=$(md5sum "${ZIPNAME}" | awk '{print $1}')
+
+          printf "Build info:\nDevice: POCO X3 GT [chopin]\nKernel Version: %s\nCompiler: AOSP Clang %s\nBuild host: ChenXia\nCommit / Branch: (%s) / %s\nBuild variant: KSUNext / Stable (clean)\nVariant: NonSusFS\nTimestamp: %s\nMD5: %s\n" \
+            "$KERNEL_VER" "$CLANG_VER" "$COMMIT_HASH" "$BRANCH" \
+            "$(TZ='Asia/Jakarta' date '+%Y%m%d-%H%M')" "$FILE_MD5" > build_info_nonsusfs.txt
+
+          echo "ZIPNAME_NONSUSFS=${ZIPNAME}" >> $GITHUB_ENV
+          cat build_info_nonsusfs.txt
+
+      - name: Build SusFS Variant
+        id: build_susfs
+        run: |
+          CLANG_DIR="${{ github.workspace }}/toolchains/clang"
+
+          export PATH="${CLANG_DIR}/bin:$PATH"
+          export KBUILD_BUILD_TIMESTAMP="$(TZ='Asia/Jakarta' date)"
+
+          # Enable SusFS
+          sed -i 's/^# CONFIG_KSU_SUSFS is not set/CONFIG_KSU_SUSFS=y/' \
+            arch/arm64/configs/chopin_defconfig || true
+
+          # Clean out dir
+          rm -rf out && mkdir out
+
+          make O=out ARCH=arm64 chopin_defconfig
+
+          make -j$(nproc --all) O=out \
+            ARCH=arm64 \
+            CC=clang \
+            HOSTCC=gcc \
+            HOSTLD=ld \
+            CLANG_TRIPLE=aarch64-none-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+            LD=ld.lld \
+            STRIP=llvm-strip \
+            AS=llvm-as \
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            CONFIG_NO_ERROR_ON_MISMATCH=y 2>&1 | tee error.log
+
+          # Revert defconfig back to non-susfs (don't pollute the source)
+          sed -i 's/^CONFIG_KSU_SUSFS=y/# CONFIG_KSU_SUSFS is not set/' \
+            arch/arm64/configs/chopin_defconfig || true
+
+          if [ -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
+            echo "BUILD_SUSFS_OK=true" >> $GITHUB_ENV
+          else
+            echo "SusFS build FAILED"
+            cat error.log | tail -50
+            exit 1
+          fi
+
+      - name: Package SusFS Variant
+        if: env.BUILD_SUSFS_OK == 'true'
+        run: |
+          CLANG_DIR="${{ github.workspace }}/toolchains/clang"
+          CLANG_RAW=$("${CLANG_DIR}/bin/clang" --version 2>/dev/null | head -1)
+          CLANG_VER=$(echo "$CLANG_RAW" | grep -oP 'clang version \K[0-9.]+' || echo "r563880c")
+          KV=$(grep -m1 "^VERSION" Makefile | awk '{print $3}')
+          KPL=$(grep -m1 "^PATCHLEVEL" Makefile | awk '{print $3}')
+          KSL=$(grep -m1 "^SUBLEVEL" Makefile | awk '{print $3}')
+          KERNEL_VER="${KV}.${KPL}.${KSL}"
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          BUILD_NUM="${{ github.run_number }}"
+          BUILD_NUM_PADDED=$(printf "%04d" "$BUILD_NUM")
+
+          ZIPNAME="ChenXia-kernel-v1-${{ env.DATE_STR }}-${BUILD_NUM_PADDED}-SusFS.zip"
+
+          cp out/arch/arm64/boot/Image.gz-dtb "${{ github.workspace }}/AnyKernel3/"
+          cd "${{ github.workspace }}/AnyKernel3"
+          zip -r9 "../${ZIPNAME}" * -x '*.git*' README.md '*placeholder' >/dev/null
+          cd "${{ github.workspace }}"
+
+          FILE_MD5=$(md5sum "${ZIPNAME}" | awk '{print $1}')
+
+          printf "Build info:\nDevice: POCO X3 GT [chopin]\nKernel Version: %s\nCompiler: AOSP Clang %s\nBuild host: ChenXia\nCommit / Branch: (%s) / %s\nBuild variant: KSUNext / Stable (clean)\nVariant: SusFS\nTimestamp: %s\nMD5: %s\n" \
+            "$KERNEL_VER" "$CLANG_VER" "$COMMIT_HASH" "$BRANCH" \
+            "$(TZ='Asia/Jakarta' date '+%Y%m%d-%H%M')" "$FILE_MD5" > build_info_susfs.txt
+
+          echo "ZIPNAME_SUSFS=${ZIPNAME}" >> $GITHUB_ENV
+          cat build_info_susfs.txt
+
+      - name: Upload Build Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-zips-${{ github.run_number }}
+          path: |
+            ChenXia-kernel-*.zip
+            build_info_*.txt
+          if-no-files-found: warn
+
+      - name: Send to Telegram
+        if: env.BUILD_NONSUSFS_OK == 'true' && env.BUILD_SUSFS_OK == 'true'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_TO }}
+        run: |
+          if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
+            echo "Telegram secrets not set, skipping upload."
+            exit 0
+          fi
+
+          COMMIT_URL="${{ github.event.repository.html_url }}/commit/${{ github.sha }}"
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+
+          # Send NonSusFS
+          CAPTION_NS="<b>✅ NonSusFS Build Success!</b>
+<pre>$(cat build_info_nonsusfs.txt)</pre>
+<a href='${COMMIT_URL}'>Commit</a> | Triggered by: ${{ github.actor }}"
+
+          curl -s -F chat_id="${TG_CHAT}" \
+               -F document=@"${{ env.ZIPNAME_NONSUSFS }}" \
+               --form-string "caption=${CAPTION_NS}" \
+               -F parse_mode="HTML" \
+               "https://api.telegram.org/bot${TG_TOKEN}/sendDocument"
+
+          sleep 3
+
+          # Send SusFS
+          CAPTION_S="<b>✅ SusFS Build Success!</b>
+<pre>$(cat build_info_susfs.txt)</pre>
+<a href='${COMMIT_URL}'>Commit</a> | Triggered by: ${{ github.actor }}"
+
+          curl -s -F chat_id="${TG_CHAT}" \
+               -F document=@"${{ env.ZIPNAME_SUSFS }}" \
+               --form-string "caption=${CAPTION_S}" \
+               -F parse_mode="HTML" \
+               "https://api.telegram.org/bot${TG_TOKEN}/sendDocument"
+
+          echo "Telegram upload done!"
