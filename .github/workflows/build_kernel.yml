@@ -28,8 +28,8 @@ jobs:
           
           echo "Downloading and applying SUSFS De-inlined patch..."
           curl -u "Amanusa:Lan14045@" -sSL "https://monyet.fly.dev/webdav/default/KernelChopin/0001-xxKSU-kernel-implement-susfs-v2.2.0-De-inlined.patch" -o ../susfs_deinlined.patch
-          git apply ../susfs_deinlined.patch
-          rm ../susfs_deinlined.patch
+          git apply ../susfs_deinlined.patch || patch -p1 < ../susfs_deinlined.patch
+          rm -f ../susfs_deinlined.patch
           
           # Patch files
           python3 -c "
