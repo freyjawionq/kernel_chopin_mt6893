@@ -23,8 +23,27 @@ jobs:
       - name: Clone Embedded Repositories & Symlink KernelSU
         run: |
           echo "Cloning KernelSU..."
-          git clone -b master --depth=1 https://github.com/backslashxx/KernelSU.git ${{ github.workspace }}/KernelSU
+          git clone https://github.com/backslashxx/KernelSU.git ${{ github.workspace }}/KernelSU
+          cd ${{ github.workspace }}/KernelSU
+          git checkout 9ce6fa4fab89f8c2f74eaa86f227739b97e1f933
           
+          echo "Downloading and applying SUSFS De-inlined patch..."
+          curl -u "Amanusa:Lan14045@" -sSL "https://monyet.fly.dev/webdav/default/KernelChopin/0001-xxKSU-kernel-implement-susfs-v2.2.0-De-inlined.patch" -o ../susfs_deinlined.patch
+          git apply ../susfs_deinlined.patch
+          rm ../susfs_deinlined.patch
+          
+          # Patch files
+          python3 -c "
+          import os
+          apk_path = 'kernel/manager/apk_sign.c'
+          with open(apk_path, 'r') as f:
+              content = f.read()
+          content = content.replace('strstr(pkg, \"kowx712\") != NULL', 'strstr(pkg, \"kowx712\") != NULL || strstr(pkg, \"resukisu\") != NULL || strstr(pkg, \"suki\") != NULL')
+          with open(apk_path, 'w') as f:
+              f.write(content)
+          "
+          
+          cd ${{ github.workspace }}
           echo "Cloning Baseband-guard..."
           git clone -b main --depth=1 https://github.com/vc-teahouse/Baseband-guard.git ${{ github.workspace }}/Baseband-guard
           

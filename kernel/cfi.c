@@ -39,7 +39,7 @@ static inline void handle_cfi_failure(void *ptr)
 #endif
 
 #ifdef CONFIG_CFI_PERMISSIVE
-	WARN_RATELIMIT(1, "CFI failure (target: [<%px>] %pF):\n", ptr, ptr);
+	pr_warn_ratelimited("CFI failure (target: [<%px>] %pF):\n", ptr, ptr);
 #else
 
 #if CONFIG_CFI_TARGET_PTR_DBG
