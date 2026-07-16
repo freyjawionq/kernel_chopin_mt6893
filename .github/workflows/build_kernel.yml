@@ -232,35 +232,31 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_TO }}
+          COMMIT_URL: ${{ github.event.repository.html_url }}/commit/${{ github.sha }}
+          ACTOR: ${{ github.actor }}
         run: |
           if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
             echo "Telegram secrets not set, skipping upload."
             exit 0
           fi
 
-          COMMIT_URL="${{ github.event.repository.html_url }}/commit/${{ github.sha }}"
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-
-          # Send NonSusFS
-          CAPTION_NS="<b>✅ NonSusFS Build Success!</b>
-<pre>$(cat build_info_nonsusfs.txt)</pre>
-<a href='${COMMIT_URL}'>Commit</a> | Triggered by: ${{ github.actor }}"
-
+          # Use shell variables derived from step/env configurations
+          # Ensure we reference env variables from GITHUB_ENV correctly via shell syntax $ZIPNAME_NONSUSFS
+          
+          CAPTION_NS=$(printf "<b>✅ NonSusFS Build Success!</b>\n<pre>%s</pre>\n<a href=\"%s\">Commit</a> | Triggered by: %s" "$(cat build_info_nonsusfs.txt)" "$COMMIT_URL" "$ACTOR")
+          
           curl -s -F chat_id="${TG_CHAT}" \
-               -F document=@"${{ env.ZIPNAME_NONSUSFS }}" \
+               -F document=@"${ZIPNAME_NONSUSFS}" \
                --form-string "caption=${CAPTION_NS}" \
                -F parse_mode="HTML" \
                "https://api.telegram.org/bot${TG_TOKEN}/sendDocument"
 
           sleep 3
 
-          # Send SusFS
-          CAPTION_S="<b>✅ SusFS Build Success!</b>
-<pre>$(cat build_info_susfs.txt)</pre>
-<a href='${COMMIT_URL}'>Commit</a> | Triggered by: ${{ github.actor }}"
+          CAPTION_S=$(printf "<b>✅ SusFS Build Success!</b>\n<pre>%s</pre>\n<a href=\"%s\">Commit</a> | Triggered by: %s" "$(cat build_info_susfs.txt)" "$COMMIT_URL" "$ACTOR")
 
           curl -s -F chat_id="${TG_CHAT}" \
-               -F document=@"${{ env.ZIPNAME_SUSFS }}" \
+               -F document=@"${ZIPNAME_SUSFS}" \
                --form-string "caption=${CAPTION_S}" \
                -F parse_mode="HTML" \
                "https://api.telegram.org/bot${TG_TOKEN}/sendDocument"
