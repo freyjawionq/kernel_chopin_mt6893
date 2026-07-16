@@ -38,18 +38,26 @@ jobs:
           echo "LC_ALL=C" >> $GITHUB_ENV
           echo "DATE_STR=$(date '+%Y%m%d')" >> $GITHUB_ENV
 
-      - name: Download AOSP Clang r563880c
+      - name: Download AOSP Clang (ZyCromerZ mirror)
         run: |
           mkdir -p "${{ github.workspace }}/toolchains/clang"
-          echo "Downloading AOSP Clang r563880c..."
-          curl -LSs "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r563880c.tar.gz" \
-            -o clang.tar.gz || \
-          curl -LSs "https://github.com/ZyCromerZ/Clang/releases/download/19.0.0git-20240908-release/Clang-19.0.0git-20240908.tar.gz" \
-            -o clang.tar.gz
+          echo "Fetching latest ZyCromerZ Clang 19 release..."
+          LATEST=$(curl -s https://api.github.com/repos/ZyCromerZ/Clang/releases | \
+            python3 -c "import sys,json; releases=json.load(sys.stdin); \
+            r=[r for r in releases if '19' in r['tag_name']]; \
+            print(r[0]['assets'][0]['browser_download_url'] if r else '')")
+          
+          if [ -z "$LATEST" ]; then
+            # Fallback to known working release
+            LATEST="https://github.com/ZyCromerZ/Clang/releases/download/19.0.0git-20240801-release/Clang-19.0.0git-20240801.tar.gz"
+          fi
+
+          echo "Downloading from: $LATEST"
+          curl -LSs "$LATEST" -o clang.tar.gz
           tar -xf clang.tar.gz -C "${{ github.workspace }}/toolchains/clang"
           rm clang.tar.gz
           echo "Clang version:"
-          "${{ github.workspace }}/toolchains/clang/bin/clang" --version || true
+          "${{ github.workspace }}/toolchains/clang/bin/clang" --version
 
       - name: Clone AnyKernel3 (froyoandroid)
         run: |
