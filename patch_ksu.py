@@ -156,4 +156,14 @@ struct cred* ksu_cred;"""
         with open(ksuc_path, 'w', encoding='utf-8') as f:
             f.write(ksuc)
 
+# 4. Edit kernel/hook/setuid_hook.c to fix compiler error: void function should not return a value
+setuid_hook_path = 'kernel/hook/setuid_hook.c'
+if os.path.exists(setuid_hook_path):
+    with open(setuid_hook_path, 'r', encoding='utf-8') as f:
+        content = f.read().replace('\r\n', '\n')
+    if 'return ksu_handle_umount(new, old);' in content:
+        content = content.replace('return ksu_handle_umount(new, old);', 'ksu_handle_umount(new, old);\n    return;')
+        with open(setuid_hook_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+
 print("Patching completed successfully!")
