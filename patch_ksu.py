@@ -166,4 +166,19 @@ if os.path.exists(setuid_hook_path):
         with open(setuid_hook_path, 'w', encoding='utf-8') as f:
             f.write(content)
 
+# 5. Patch kernel/manager/apk_sign.c to allow any manager APK (universal multi-manager support)
+apk_sign_path = 'kernel/manager/apk_sign.c'
+if os.path.exists(apk_sign_path):
+    with open(apk_sign_path, 'r', encoding='utf-8') as f:
+        content = f.read().replace('\r\n', '\n')
+    if 'bool is_manager_apk(char *path)' in content:
+        start = content.find('bool is_manager_apk(char *path)')
+        end = content.find('}', start)
+        if start != -1 and end != -1:
+            new_func = "bool is_manager_apk(char *path)\n{\n\treturn true;\n}"
+            content = content[:start] + new_func + content[end+1:]
+            with open(apk_sign_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            print("Patched apk_sign.c for universal multi-manager support!")
+
 print("Patching completed successfully!")
