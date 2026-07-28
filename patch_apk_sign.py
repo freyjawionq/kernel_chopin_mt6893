@@ -38,11 +38,21 @@ print(f'Original function (lines {start_idx+1} to {end_idx+1}):')
 for l in lines[start_idx:end_idx+1]:
     print(repr(l))
 
-# Replace the function with a simple 'return true' version
+# Replace the function with multi-manager package matching
 new_func_lines = [
     'bool is_manager_apk(char *path)\n',
     '{\n',
-    '\treturn true;\n',
+    '\tchar pkg[KSU_MAX_PACKAGE_NAME];\n',
+    '\tif (get_pkg_from_apk_path(pkg, path) < 0) {\n',
+    '\t\treturn check_v2_signature(path, KSU_EXPECTED_SIZE, KSU_EXPECTED_HASH);\n',
+    '\t}\n',
+    '\tif (strstr(pkg, "kernelsu") || strstr(pkg, "kowsu") || \n',
+    '\t    strstr(pkg, "resukisu") || strstr(pkg, "supermanager") ||\n',
+    '\t    strstr(pkg, "weishu") || strstr(pkg, "ksu")) {\n',
+    '\t\tpr_info("is_manager_apk: matched manager pkg %s at %s\\n", pkg, path);\n',
+    '\t\treturn true;\n',
+    '\t}\n',
+    '\treturn check_v2_signature(path, KSU_EXPECTED_SIZE, KSU_EXPECTED_HASH);\n',
     '}\n',
 ]
 
@@ -51,7 +61,7 @@ new_lines = lines[:start_idx] + new_func_lines + lines[end_idx+1:]
 with open(apk_path, 'w') as f:
     f.writelines(new_lines)
 
-print('Patched apk_sign.c: is_manager_apk now returns true (universal multi-manager support)')
+print('Patched apk_sign.c: is_manager_apk now matches all manager package names accurately')
 
 # Skip manager_identity.h patch to avoid triggering "Mode jailbreak" warning badge
 
