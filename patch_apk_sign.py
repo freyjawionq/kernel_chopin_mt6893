@@ -53,20 +53,7 @@ with open(apk_path, 'w') as f:
 
 print('Patched apk_sign.c: is_manager_apk now returns true (universal multi-manager support)')
 
-# Also patch manager_identity.h so is_manager() always returns true
-identity_path = 'kernel/manager/manager_identity.h'
-if os.path.exists(identity_path):
-    with open(identity_path, 'r', encoding='utf-8') as f:
-        id_content = f.read()
-    if 'static inline bool is_manager()' in id_content:
-        # Patch is_manager to return true
-        id_content = id_content.replace(
-            'return unlikely(ksu_manager_appid == current_uid().val % KSU_PER_USER_RANGE);',
-            'return true;'
-        )
-        with open(identity_path, 'w', encoding='utf-8') as f:
-            f.write(id_content)
-        print('Patched manager_identity.h: is_manager now returns true (universal GREEN status)')
+# Skip manager_identity.h patch to avoid triggering "Mode jailbreak" warning badge
 
 # Also patch kernel/Makefile to set KSU_VERSION to 33214 (matching official KernelSU-Next v3.3.0)
 makefile_path = 'kernel/Makefile'
