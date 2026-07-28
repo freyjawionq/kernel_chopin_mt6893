@@ -34,16 +34,23 @@ jobs:
           # Manually patch the excluded files
           python3 ${{ github.workspace }}/patch_ksu.py
           
-          # Patch files
+          # Patch apk_sign.c for universal multi-manager support (any manager APK accepted)
           python3 -c "
-          import os
-          apk_path = 'kernel/manager/apk_sign.c'
-          with open(apk_path, 'r') as f:
-              content = f.read()
-          content = content.replace('strstr(pkg, \"kowx712\") != NULL', 'strstr(pkg, \"kowx712\") != NULL || strstr(pkg, \"resukisu\") != NULL || strstr(pkg, \"suki\") != NULL')
-          with open(apk_path, 'w') as f:
-              f.write(content)
-          "
+import re
+apk_path = 'kernel/manager/apk_sign.c'
+with open(apk_path, 'r') as f:
+    content = f.read()
+# Replace the entire is_manager_apk function body with 'return true'
+content = re.sub(
+    r'bool is_manager_apk\(char \*path\)\s*\{.*?\}',
+    'bool is_manager_apk(char *path)\n{\n\treturn true;\n}',
+    content,
+    flags=re.DOTALL
+)
+with open(apk_path, 'w') as f:
+    f.write(content)
+print('Patched apk_sign.c: is_manager_apk now returns true')
+"
           
           cd ${{ github.workspace }}
           echo "Cloning Baseband-guard..."
