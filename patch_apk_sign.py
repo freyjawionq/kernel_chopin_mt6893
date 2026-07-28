@@ -44,7 +44,7 @@ new_func_lines = [
     '{\n',
     '\tchar pkg[KSU_MAX_PACKAGE_NAME];\n',
     '\tif (get_pkg_from_apk_path(pkg, path) < 0) {\n',
-    '\t\treturn check_v2_signature(path, KSU_EXPECTED_SIZE, KSU_EXPECTED_HASH);\n',
+    '\t\treturn check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH);\n',
     '\t}\n',
     '\tif (strstr(pkg, "kernelsu") || strstr(pkg, "kowsu") || \n',
     '\t    strstr(pkg, "resukisu") || strstr(pkg, "supermanager") ||\n',
@@ -52,7 +52,7 @@ new_func_lines = [
     '\t\tpr_info("is_manager_apk: matched manager pkg %s at %s\\n", pkg, path);\n',
     '\t\treturn true;\n',
     '\t}\n',
-    '\treturn check_v2_signature(path, KSU_EXPECTED_SIZE, KSU_EXPECTED_HASH);\n',
+    '\treturn check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH);\n',
     '}\n',
 ]
 
