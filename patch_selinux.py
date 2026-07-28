@@ -29,6 +29,9 @@ custom_rules = """\tksu_allow(db, "domain", KERNEL_SU_DOMAIN, "unix_stream_socke
 \tksu_allow(db, "mtk_hal_camera", "proc_stat", "file", ALL);
 \tksu_allow(db, "mtk_hal_camera", "shell_data_file", "dir", ALL);
 \tksu_allow(db, "mtk_hal_camera", "system_data_file", "dir", ALL);
+\tksu_allow(db, "cameraserver", "vendor_default_prop", "file", ALL);
+\tksu_allow(db, "platform_app", "vendor_panel_info_prop", "file", ALL);
+\tksu_allow(db, "system_server", "wifi_hal_prop", "file", ALL);
 
 \t/* Sensors HAL fix */
 \tksu_allow(db, "mtk_hal_sensors", "system_suspend", "binder", ALL);
