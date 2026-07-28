@@ -283,14 +283,24 @@ jobs:
           echo "ZIPNAME_SUSFS=${ZIPNAME}" >> $GITHUB_ENV
           cat build_info_susfs.txt
 
-      - name: Upload Build Artifacts
-        if: always()
+      - name: Upload NonSusFS Artifact
+        if: env.BUILD_NONSUSFS_OK == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-zips-${{ github.run_number }}
+          name: ChenXia-kernel-NonSusFS-${{ github.run_number }}
           path: |
-            ChenXia-kernel-*.zip
-            build_info_*.txt
+            ChenXia-kernel-*-NonSusFS.zip
+            build_info_nonsusfs.txt
+          if-no-files-found: warn
+
+      - name: Upload SusFS Artifact
+        if: env.BUILD_SUSFS_OK == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChenXia-kernel-SusFS-${{ github.run_number }}
+          path: |
+            ChenXia-kernel-*-SusFS.zip
+            build_info_susfs.txt
           if-no-files-found: warn
 
       - name: Send to Telegram
