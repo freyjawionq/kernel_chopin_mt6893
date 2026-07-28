@@ -107,3 +107,21 @@ if target in content:
     with open(rules_path, 'w', encoding='utf-8') as f:
         f.write(content)
     print("Patched kernel/selinux/rules.c directly in KernelSU driver source with all HAL SELinux rules!")
+
+# Fix handle_sepolicy_fn return value for kernel < 5.10 so ksud sepolicy batch succeeds
+with open(rules_path, 'r', encoding='utf-8') as f:
+    r_content = f.read()
+
+old_out_block = """out:
+	*(int *)(ctx->ctx_success_cmd_count) = success_cmd_count;
+	return ret;"""
+
+new_out_block = """out:
+	*(int *)(ctx->ctx_success_cmd_count) = success_cmd_count;
+	return success_cmd_count > 0 ? success_cmd_count : ret;"""
+
+if old_out_block in r_content:
+    r_content = r_content.replace(old_out_block, new_out_block)
+    with open(rules_path, 'w', encoding='utf-8') as f:
+        f.write(r_content)
+    print("Patched handle_sepolicy_fn in rules.c: return success_cmd_count for kernel < 5.10 (fixes ksud os error 22)")
