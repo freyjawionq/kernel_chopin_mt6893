@@ -1,0 +1,116 @@
+name: Build ChenXia Kernel
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Kernel
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib \
+            gcc-multilib git gnupg gperf lib32readline-dev lib32z1-dev libelf-dev \
+            liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush \
+            rsync schedtool squashfs-tools xsltproc zip zlib1g-dev gcc-arm-linux-gnueabi
+
+      - name: Cache Toolchains
+        id: cache-toolchains
+        uses: actions/cache@v4
+        with:
+          path: toolchains
+          key: ${{ runner.os }}-toolchains-clang-r563880c-arm-gnu-14.2
+
+      - name: Download Toolchains
+        if: steps.cache-toolchains.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p toolchains/aosp-clang toolchains/arm-gnu
+          
+          # Download Google Clang 21 (r563880c)
+          echo "Downloading AOSP Clang 21..."
+          curl -sSL "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-r563880c.tar.gz" -o clang.tar.gz
+          tar -xzf clang.tar.gz -C toolchains/aosp-clang
+          rm -f clang.tar.gz
+
+          # Download ARM GNU GCC Toolchain 14.2
+          echo "Downloading ARM GNU Toolchain..."
+          curl -sSL "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz" -o arm-gnu.tar.xz
+          tar -xJf arm-gnu.tar.xz --strip-components=1 -C toolchains/arm-gnu
+          rm -f arm-gnu.tar.xz
+
+      - name: Compile Kernel
+        run: |
+          export ARCH=arm64
+          export KBUILD_BUILD_USER="ChenXia"
+          export KBUILD_BUILD_HOST="github-actions"
+
+          # Prepare output dir
+          mkdir -p out
+
+          # Generate defconfig
+          make O=out ARCH=arm64 chopin_defconfig
+
+          # Configure paths
+          CLANG_DIR="$(pwd)/toolchains/aosp-clang"
+          GCC_DIR="$(pwd)/toolchains/arm-gnu"
+          export PATH="${CLANG_DIR}/bin:${GCC_DIR}/bin:${PATH}"
+
+          # Make
+          make -j$(nproc --all) O=out \
+                                ARCH=arm64 \
+                                CC="clang" \
+                                HOSTCC="gcc" \
+                                HOSTLD="ld" \
+                                CLANG_TRIPLE=aarch64-none-linux-gnu- \
+                                CROSS_COMPILE="aarch64-none-linux-gnu-" \
+                                CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
+                                LD=ld.lld \
+                                STRIP=llvm-strip \
+                                AS=llvm-as \
+                                AR=llvm-ar \
+                                NM=llvm-nm \
+                                OBJCOPY=llvm-objcopy \
+                                OBJDUMP=llvm-objdump \
+                                CONFIG_NO_ERROR_ON_MISMATCH=y
+
+      - name: Package AnyKernel3
+        run: |
+          if [ -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
+              echo "Kernel compiled successfully! Packaging..."
+              git clone -q --depth=1 https://github.com/froyoandroid/AnyKernel3 AnyKernel3
+              sed -i 's/kernel.string=.*/kernel.string=Kernel by Chen Xia/g' AnyKernel3/anykernel.sh
+              cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+              
+              DATE_STR=$(date '+%Y%m%d')
+              VERSION_FILE="build_version.txt"
+              if [ -f "$VERSION_FILE" ]; then
+                  VERSION=$(cat "$VERSION_FILE")
+              else
+                  VERSION=1
+              fi
+              VERSION_STR=$(printf "%04d" "$VERSION")
+              ZIPNAME="ChenXia-kernel-v1-${DATE_STR}-${VERSION_STR}.zip"
+              
+              cd AnyKernel3
+              zip -r9 "../$ZIPNAME" * -x '*.git*' README.md *placeholder
+              echo "ZIP_NAME=$ZIPNAME" >> $GITHUB_ENV
+          else
+              echo "Compilation failed! Image.gz-dtb not found."
+              exit 1
+          fi
+
+      - name: Upload Kernel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
