@@ -67,7 +67,7 @@ if os.path.exists(makefile_path):
             f.write(mk_content)
         print('Patched kernel/Makefile: KSU_VERSION updated to 33214 (matching KernelSU-Next v3.3.0)')
 
-# Patch kernel/supercall/supercall.c to add disable_seccomp() in ksu_handle_sys_reboot
+# Patch kernel/supercall/supercall.c to add disable_seccomp() and move CHANGE_MANAGER_UID above root check
 supercall_path = 'kernel/supercall/supercall.c'
 if os.path.exists(supercall_path):
     with open(supercall_path, 'r', encoding='utf-8') as f:
@@ -77,9 +77,40 @@ if os.path.exists(supercall_path):
             'if (magic1 != KSU_INSTALL_MAGIC1)\n\t\treturn 0;',
             'if (magic1 != KSU_INSTALL_MAGIC1)\n\t\treturn 0;\n\n\tdisable_seccomp();'
         )
-        with open(supercall_path, 'w', encoding='utf-8') as f:
-            f.write(sc_content)
-        print('Patched kernel/supercall/supercall.c: added disable_seccomp() to prevent Seccomp SIGSYS crashes')
+    # Move CHANGE_MANAGER_UID before current_uid().val != 0
+    old_root_check = """\t// only root is allowed for these commands
+\tif (current_uid().val != 0)
+\t\treturn 0;
+\t
+\t// extensions
+\tu64 reply = (u64)*arg;
+
+\tif (magic2 == CHANGE_MANAGER_UID) {"""
+
+    new_root_check = """\t// extensions
+\tu64 reply = (u64)*arg;
+
+\tif (magic2 == CHANGE_MANAGER_UID) {
+\t\tpr_info("sys_reboot: ksu_set_manager_appid to: %d\\n", cmd);
+\t\tksu_set_manager_appid(cmd);
+
+\t\tif (cmd == ksu_get_manager_appid()) {
+\t\t\tif (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
+\t\t\t\tpr_info("sys_reboot: reply fail\\n");
+\t\t}
+
+\t\treturn 0;
+\t}
+
+\t// only root is allowed for remaining commands
+\tif (current_uid().val != 0)
+\t\treturn 0;"""
+
+    if old_root_check in sc_content:
+        sc_content = sc_content.replace(old_root_check, new_root_check)
+    with open(supercall_path, 'w', encoding='utf-8') as f:
+        f.write(sc_content)
+    print('Patched kernel/supercall/supercall.c: added disable_seccomp() and allowed non-root manager crowning')
 
 # Patch kernel/supercall/dispatch.c to add KSU_GET_INFO_FLAG_LEGACY (1<<3) and KSU_GET_INFO_FLAG_MANAGER (1<<2)
 dispatch_path = 'kernel/supercall/dispatch.c'
