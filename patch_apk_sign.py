@@ -1,19 +1,54 @@
-import re
+import os
 
 apk_path = 'kernel/manager/apk_sign.c'
 with open(apk_path, 'r') as f:
-    content = f.read()
+    lines = f.readlines()
 
-# Replace the entire is_manager_apk function body with 'return true'
-new_func = 'bool is_manager_apk(char *path)\n{\n\treturn true;\n}'
-content = re.sub(
-    r'bool is_manager_apk\(char \*path\)\s*\{[^}]*\}',
-    new_func,
-    content,
-    flags=re.DOTALL
-)
+# Find the line index of 'bool is_manager_apk'
+start_idx = None
+for i, line in enumerate(lines):
+    if 'bool is_manager_apk' in line and 'path' in line:
+        start_idx = i
+        break
+
+if start_idx is None:
+    print('ERROR: is_manager_apk function not found!')
+    print('File content (last 30 lines):')
+    for l in lines[-30:]:
+        print(repr(l))
+    exit(1)
+
+print(f'Found is_manager_apk at line {start_idx+1}')
+
+# Find the matching closing brace by counting braces
+brace_count = 0
+end_idx = None
+for i in range(start_idx, len(lines)):
+    brace_count += lines[i].count('{')
+    brace_count -= lines[i].count('}')
+    if brace_count == 0 and i > start_idx:
+        end_idx = i
+        break
+
+if end_idx is None:
+    print('ERROR: Could not find closing brace of is_manager_apk!')
+    exit(1)
+
+print(f'Original function (lines {start_idx+1} to {end_idx+1}):')
+for l in lines[start_idx:end_idx+1]:
+    print(repr(l))
+
+# Replace the function with a simple 'return true' version
+new_func_lines = [
+    'bool is_manager_apk(char *path)\n',
+    '{\n',
+    '\treturn true;\n',
+    '}\n',
+]
+
+new_lines = lines[:start_idx] + new_func_lines + lines[end_idx+1:]
 
 with open(apk_path, 'w') as f:
-    f.write(content)
+    f.writelines(new_lines)
 
-print('Patched apk_sign.c: is_manager_apk now returns true')
+print('Patched apk_sign.c: is_manager_apk now returns true (universal multi-manager support)')
