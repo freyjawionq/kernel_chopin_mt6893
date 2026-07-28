@@ -103,6 +103,56 @@ jobs:
           git clone --depth=1 https://github.com/froyoandroid/AnyKernel3 \
             "${{ github.workspace }}/AnyKernel3"
 
+          # Write sepolicy.rule into AnyKernel3 — KernelSU reads this file
+          # from /data/adb/ksu/sepolicy.rule on every boot automatically.
+          # Rules derived from dmesg AVC denial analysis on POCO X3 GT (chopin).
+          cat > "${{ github.workspace }}/AnyKernel3/sepolicy.rule" << 'SEPEOF'
+# Zygote — fixes LSPosed slow binder & inject failures
+allow zygote vendor_default_prop file { read open getattr }
+allow zygote vendor_fp_prop file { read open getattr }
+allow zygote mcd_data_file dir { search }
+
+# KSU Manager (me.weishu.kernelsu / backslashxx manager)
+allow untrusted_app vendor_displayfeature_prop file { read open getattr }
+allow untrusted_app shell_test_data_file dir { search }
+allow untrusted_app selinuxfs file { read open getattr }
+allow untrusted_app incremental_prop file { read open getattr }
+allow untrusted_app proc_perfmgr file { ioctl }
+allow untrusted_app sysfs_batteryinfo dir { search read open getattr }
+
+# System app
+allow system_app qemu_hw_prop file { read open getattr }
+allow system_app mcd_data_file dir { search }
+allow system_app vendor_mtk_usb_prop file { read open getattr }
+allow system_app incremental_prop file { read open getattr }
+allow system_app keyguard_config_prop file { read open getattr }
+allow system_app privapp_data_file dir { search }
+allow system_app system_data_file dir { read open getattr }
+
+# Platform app
+allow platform_app mcd_data_file dir { search }
+
+# Shell
+allow shell vendor_displayfeature_prop file { read open getattr }
+allow shell mcd_data_file dir { search }
+
+# GMS
+allow gmscore_app traced_producer_socket sock_file { write }
+allow gmscore_app privapp_data_file dir { search }
+
+# Surfaceflinger
+allow surfaceflinger mcd_data_file dir { search }
+
+# System suspend
+allow system_suspend sysfs dir { read open getattr }
+
+# Joyose (Xiaomi Game Turbo)
+allow joyose_app sysfs_soc dir { search read open getattr }
+
+# KSU domain
+allow ksu ksu udp_socket { ioctl }
+SEPEOF
+
       - name: Cache CCache
         uses: actions/cache@v4
         with:
