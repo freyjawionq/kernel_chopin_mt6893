@@ -77,40 +77,9 @@ if os.path.exists(supercall_path):
             'if (magic1 != KSU_INSTALL_MAGIC1)\n\t\treturn 0;',
             'if (magic1 != KSU_INSTALL_MAGIC1)\n\t\treturn 0;\n\n\tdisable_seccomp();'
         )
-    # Move CHANGE_MANAGER_UID before current_uid().val != 0
-    old_root_check = """\t// only root is allowed for these commands
-\tif (current_uid().val != 0)
-\t\treturn 0;
-\t
-\t// extensions
-\tu64 reply = (u64)*arg;
-
-\tif (magic2 == CHANGE_MANAGER_UID) {"""
-
-    new_root_check = """\t// extensions
-\tu64 reply = (u64)*arg;
-
-\tif (magic2 == CHANGE_MANAGER_UID) {
-\t\tpr_info("sys_reboot: ksu_set_manager_appid to: %d\\n", cmd);
-\t\tksu_set_manager_appid(cmd);
-
-\t\tif (cmd == ksu_get_manager_appid()) {
-\t\t\tif (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
-\t\t\t\tpr_info("sys_reboot: reply fail\\n");
-\t\t}
-
-\t\treturn 0;
-\t}
-
-\t// only root is allowed for remaining commands
-\tif (current_uid().val != 0)
-\t\treturn 0;"""
-
-    if old_root_check in sc_content:
-        sc_content = sc_content.replace(old_root_check, new_root_check)
     with open(supercall_path, 'w', encoding='utf-8') as f:
         f.write(sc_content)
-    print('Patched kernel/supercall/supercall.c: added disable_seccomp() and allowed non-root manager crowning')
+    print('Patched kernel/supercall/supercall.c: added disable_seccomp()')
 
 # Patch kernel/supercall/dispatch.c to add KSU_GET_INFO_FLAG_LEGACY (1<<3) and KSU_GET_INFO_FLAG_MANAGER (1<<2)
 dispatch_path = 'kernel/supercall/dispatch.c'
