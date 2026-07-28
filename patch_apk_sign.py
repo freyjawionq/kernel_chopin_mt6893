@@ -68,14 +68,14 @@ if os.path.exists(identity_path):
             f.write(id_content)
         print('Patched manager_identity.h: is_manager now returns true (universal GREEN status)')
 
-# Also patch kernel/Makefile to update KSU_VERSION to 33224 (matching KernelSU-Next Manager v3.3.0)
+# Also patch kernel/Makefile to set KSU_VERSION to 99999 (future-proof for any manager update)
 makefile_path = 'kernel/Makefile'
 if os.path.exists(makefile_path):
     with open(makefile_path, 'r', encoding='utf-8') as f:
         mk_content = f.read()
     if 'CFLAGS_ksu.o += -DKSU_VERSION=' in mk_content:
         import re
-        mk_content = re.sub(r'CFLAGS_ksu\.o \+= -DKSU_VERSION=\d+', 'CFLAGS_ksu.o += -DKSU_VERSION=33224', mk_content)
+        mk_content = re.sub(r'CFLAGS_ksu\.o \+= -DKSU_VERSION=\d+', 'CFLAGS_ksu.o += -DKSU_VERSION=99999', mk_content)
         with open(makefile_path, 'w', encoding='utf-8') as f:
             f.write(mk_content)
-        print('Patched kernel/Makefile: KSU_VERSION updated to 33224 (matching KernelSU-Next Manager v3.3.0)')
+        print('Patched kernel/Makefile: KSU_VERSION updated to 99999 (future-proof for all manager updates)')
