@@ -67,6 +67,20 @@ if os.path.exists(makefile_path):
             f.write(mk_content)
         print('Patched kernel/Makefile: KSU_VERSION updated to 33214 (matching KernelSU-Next v3.3.0)')
 
+# Patch kernel/supercall/supercall.c to add disable_seccomp() in ksu_handle_sys_reboot
+supercall_path = 'kernel/supercall/supercall.c'
+if os.path.exists(supercall_path):
+    with open(supercall_path, 'r', encoding='utf-8') as f:
+        sc_content = f.read()
+    if 'int ksu_handle_sys_reboot(int magic1,' in sc_content and 'disable_seccomp();' not in sc_content:
+        sc_content = sc_content.replace(
+            'if (magic1 != KSU_INSTALL_MAGIC1)\n\t\treturn 0;',
+            'if (magic1 != KSU_INSTALL_MAGIC1)\n\t\treturn 0;\n\n\tdisable_seccomp();'
+        )
+        with open(supercall_path, 'w', encoding='utf-8') as f:
+            f.write(sc_content)
+        print('Patched kernel/supercall/supercall.c: added disable_seccomp() to prevent Seccomp SIGSYS crashes')
+
 # Patch kernel/supercall/dispatch.c to add KSU_GET_INFO_FLAG_LEGACY (1<<3)
 dispatch_path = 'kernel/supercall/dispatch.c'
 if os.path.exists(dispatch_path):
