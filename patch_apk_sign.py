@@ -68,14 +68,28 @@ if os.path.exists(identity_path):
             f.write(id_content)
         print('Patched manager_identity.h: is_manager now returns true (universal GREEN status)')
 
-# Also patch kernel/Makefile to set KSU_VERSION to 12431 (matching KernelSU-Next / ReSukiSU / KOWX712 driver code)
+# Also patch kernel/Makefile to set KSU_VERSION to 33214 (matching official KernelSU-Next v3.3.0)
 makefile_path = 'kernel/Makefile'
 if os.path.exists(makefile_path):
     with open(makefile_path, 'r', encoding='utf-8') as f:
         mk_content = f.read()
     if 'CFLAGS_ksu.o += -DKSU_VERSION=' in mk_content:
         import re
-        mk_content = re.sub(r'CFLAGS_ksu\.o \+= -DKSU_VERSION=\d+', 'CFLAGS_ksu.o += -DKSU_VERSION=12431', mk_content)
+        mk_content = re.sub(r'CFLAGS_ksu\.o \+= -DKSU_VERSION=\d+', 'CFLAGS_ksu.o += -DKSU_VERSION=33214', mk_content)
         with open(makefile_path, 'w', encoding='utf-8') as f:
             f.write(mk_content)
-        print('Patched kernel/Makefile: KSU_VERSION updated to 12431 (matching KernelSU-Next / ReSukiSU / KOWX712 driver code)')
+        print('Patched kernel/Makefile: KSU_VERSION updated to 33214 (matching KernelSU-Next v3.3.0)')
+
+# Patch kernel/supercall/dispatch.c to add KSU_GET_INFO_FLAG_LEGACY (1<<3)
+dispatch_path = 'kernel/supercall/dispatch.c'
+if os.path.exists(dispatch_path):
+    with open(dispatch_path, 'r', encoding='utf-8') as f:
+        disp_content = f.read()
+    if 'if (is_manager()) {' in disp_content:
+        disp_content = disp_content.replace(
+            'if (is_manager()) {\n\t\tcmd.flags |= KSU_GET_INFO_FLAG_MANAGER;\n\t}',
+            'cmd.flags |= (1 << 2);\n\tcmd.flags |= (1 << 3);'
+        )
+        with open(dispatch_path, 'w', encoding='utf-8') as f:
+            f.write(disp_content)
+        print('Patched kernel/supercall/dispatch.c: added KSU_GET_INFO_FLAG_LEGACY for Non-GKI driver recognition')
