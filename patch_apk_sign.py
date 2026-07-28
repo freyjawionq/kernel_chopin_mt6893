@@ -81,12 +81,12 @@ if os.path.exists(supercall_path):
             f.write(sc_content)
         print('Patched kernel/supercall/supercall.c: added disable_seccomp() to prevent Seccomp SIGSYS crashes')
 
-# Patch kernel/supercall/dispatch.c to add KSU_GET_INFO_FLAG_LEGACY (1<<3)
+# Patch kernel/supercall/dispatch.c to add KSU_GET_INFO_FLAG_LEGACY (1<<3) and KSU_GET_INFO_FLAG_MANAGER (1<<2)
 dispatch_path = 'kernel/supercall/dispatch.c'
 if os.path.exists(dispatch_path):
     with open(dispatch_path, 'r', encoding='utf-8') as f:
         disp_content = f.read()
-    if 'if (is_manager()) {' in disp_content:
+    if 'cmd.flags |= (1 << 3);' not in disp_content:
         disp_content = disp_content.replace(
             'if (is_manager()) {\n\t\tcmd.flags |= KSU_GET_INFO_FLAG_MANAGER;\n\t}',
             'cmd.flags |= (1 << 2);\n\tcmd.flags |= (1 << 3);'
