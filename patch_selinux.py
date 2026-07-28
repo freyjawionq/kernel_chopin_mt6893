@@ -48,8 +48,13 @@ custom_rules = """\tksu_allow(db, "domain", KERNEL_SU_DOMAIN, "unix_stream_socke
 \tksu_allow(db, "hal_graphics_allocator_default", "default_prop", "file", ALL);
 
 \t/* System Suspend, Battery, Power fixes */
+\tksu_allow(db, "system_suspend", "mtk_hal_sensors", "binder", ALL);
+\tksu_allow(db, "system_suspend", "sysfs_usb_supply", "dir", ALL);
+\tksu_allow(db, "system_suspend", "sysfs_battery_supply", "dir", ALL);
 \tksu_allow(db, "system_suspend", "sysfs", "file", ALL);
 \tksu_allow(db, "system_suspend", "sysfs", "dir", ALL);
+\tksu_allow(db, "crash_dump", "sysfs_aee_enable", "file", ALL);
+\tksu_allow(db, "untrusted_app", "sysfs_battery_supply", "dir", ALL);
 \tksu_allow(db, "charge_logger", "default_prop", "file", ALL);
 \tksu_allow(db, "batterysecret", "default_prop", "file", ALL);
 \tksu_allow(db, "mi_ric", "default_prop", "file", ALL);
