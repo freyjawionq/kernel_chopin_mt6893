@@ -12,7 +12,7 @@ int ksu_handle_sys_read(unsigned int fd) {
 EXPORT_SYMBOL(ksu_handle_sys_read);
 #endif
 
-#ifdef CONFIG_KSU_SUSFS
+#ifdef CONFIG_KSU
 int ksu_handle_devpts(struct inode *inode) {
     return 0;
 }
