@@ -65,9 +65,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: ccache-${{ github.sha }}
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.sha }}
           restore-keys: |
-            ccache-
+            ccache-${{ runner.os }}-${{ github.ref_name }}-
+            ccache-${{ runner.os }}-
 
       - name: Build NonSusFS Variant
         id: build_nonsusfs
@@ -79,15 +80,17 @@ jobs:
           export KBUILD_BUILD_TIMESTAMP="$(TZ='Asia/Jakarta' date)"
           export USE_CCACHE=1
           export CCACHE_DIR=~/.ccache
-          ccache -M 5G
+          export CCACHE_COMPRESS=1
+          export CCACHE_COMPRESSLEVEL=6
+          export CCACHE_MAXSIZE=10G
           ccache -s
 
           # Set defconfig to non-susfs
           sed -i 's/^CONFIG_KSU_SUSFS=y/# CONFIG_KSU_SUSFS is not set/' \
             arch/arm64/configs/chopin_defconfig || true
 
-          # Clean out dir
-          rm -rf out && mkdir out
+          # Create out dir
+          mkdir -p out
 
           # Generate config
           make O=out ARCH=arm64 chopin_defconfig
