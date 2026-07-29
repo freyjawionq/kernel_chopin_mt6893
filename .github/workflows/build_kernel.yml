@@ -40,6 +40,9 @@ jobs:
           # Patch rules.c directly in KernelSU driver source for hardcoded SELinux rules
           python3 ${{ github.workspace }}/patch_selinux.py
           
+          # Patch dispatch.c for Non-GKI legacy manager support
+          python3 ${{ github.workspace }}/patch_dispatch.py
+          
           cd ${{ github.workspace }}
           echo "Cloning Baseband-guard..."
           git clone -b main --depth=1 https://github.com/vc-teahouse/Baseband-guard.git ${{ github.workspace }}/Baseband-guard
