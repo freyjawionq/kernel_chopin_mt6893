@@ -86,11 +86,6 @@ jobs:
           echo "Clang version:"
           "${{ github.workspace }}/toolchains/clang/bin/clang" --version
 
-      - name: Clone AnyKernel3 (froyoandroid)
-        run: |
-          git clone --depth=1 https://github.com/froyoandroid/AnyKernel3 \
-            "${{ github.workspace }}/AnyKernel3"
-
       - name: Cache CCache
         uses: actions/cache@v4
         with:
