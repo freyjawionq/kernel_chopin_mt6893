@@ -19,17 +19,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Clone Embedded Repositories
-        run: |
-          echo "Cloning Baseband-guard..."
-          git clone -b main --depth=1 https://github.com/vc-teahouse/Baseband-guard.git ${{ github.workspace }}/Baseband-guard
-          
-          echo "Cloning bbrplus..."
-          git clone -b master --depth=1 https://github.com/cx9208/bbrplus.git ${{ github.workspace }}/bbrplus
-          
-          echo "Cloning wireguard-linux-compat..."
-          git clone -b master --depth=1 https://git.zx2c4.com/wireguard-linux-compat ${{ github.workspace }}/wireguard-linux-compat
-
       - name: Install Build Dependencies
         run: |
           sudo apt-get update -y
