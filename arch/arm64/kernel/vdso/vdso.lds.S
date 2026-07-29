@@ -91,6 +91,7 @@ VERSION
 	LINUX_2.6.39 {
 	global:
 		__kernel_rt_sigreturn;
+		VDSO_sigtramp;
 		__kernel_gettimeofday;
 		__kernel_clock_gettime;
 		__kernel_clock_getres;
