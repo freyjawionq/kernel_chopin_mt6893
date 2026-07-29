@@ -1,4 +1,5 @@
 import os
+import re
 
 dispatch_path = 'KernelSU/kernel/supercall/dispatch.c'
 if not os.path.exists(dispatch_path):
@@ -8,7 +9,7 @@ if os.path.exists(dispatch_path):
     with open(dispatch_path, 'r', encoding='utf-8') as f:
         content = f.read().replace('\r\n', '\n')
 
-    # Force KSU_GET_INFO_FLAG_LEGACY (1<<3) and KSU_GET_INFO_FLAG_MANAGER (1<<2) in do_get_info & do_get_info_legacy
+    # Replace pr_err in do_get_info and do_get_info_legacy cleanly without macro escaping issues
     target_do_get_info = """static int do_get_info(void __user *arg)
 {
 	struct ksu_get_info_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
@@ -28,10 +29,8 @@ if os.path.exists(dispatch_path):
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
 
-	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
-		pr_err("get_version: copy_to_user failed\\n");
+	if (copy_to_user(arg, &cmd, sizeof(cmd)))
 		return -EFAULT;
-	}
 
 	return 0;
 }
@@ -47,16 +46,12 @@ static int do_get_info_legacy(void __user *arg)
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
 
-	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
-		pr_err("get_version: copy_to_user failed\\n");
+	if (copy_to_user(arg, &cmd, sizeof(cmd)))
 		return -EFAULT;
-	}
 
 	return 0;
 }"""
 
-    # Find do_get_info and do_get_info_legacy block and replace
-    import re
     pattern = r'static int do_get_info\(void __user \*arg\).*?static int do_report_event'
     replacement = target_do_get_info + "\n\nstatic int do_report_event"
     
