@@ -116,6 +116,15 @@ jobs:
             echo "BUILD_NONSUSFS_OK=true" >> $GITHUB_ENV
           else
             echo "NonSusFS build FAILED"
+            # Debug: show vdso offsets header and nm output
+            if [ -f "out/arch/arm64/kernel/vdso/vdso.so.dbg" ]; then
+              echo "=== llvm-nm vdso.so.dbg output ==="
+              llvm-nm out/arch/arm64/kernel/vdso/vdso.so.dbg | sort
+            fi
+            if [ -f "out/include/generated/vdso-offsets.h" ]; then
+              echo "=== vdso-offsets.h ==="
+              cat out/include/generated/vdso-offsets.h
+            fi
             cat error.log | tail -50
             exit 1
           fi

@@ -90,7 +90,6 @@ VERSION
 {
 	LINUX_2.6.39 {
 	global:
-		VDSO_sigtramp;
 		__kernel_rt_sigreturn;
 		__kernel_gettimeofday;
 		__kernel_clock_gettime;
@@ -99,3 +98,6 @@ VERSION
 	local: *;
 	};
 }
+
+/* VDSO_sigtramp points at __kernel_rt_sigreturn */
+VDSO_sigtramp = __kernel_rt_sigreturn;
