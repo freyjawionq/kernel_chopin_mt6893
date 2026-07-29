@@ -13,5 +13,4 @@
 
 LC_ALL=C
 sed -n -e 's/^00*/0/' -e \
-'s/^\([0-9a-fA-F]*\) [A-Za-z] VDSO_\([a-zA-Z0-9_]*\)$/\#define vdso_offset_\2\t0x\1/p' -e \
-'s/^\([0-9a-fA-F]*\) [A-Za-z] __kernel_rt_sigreturn$/\#define vdso_offset_sigtramp\t0x\1/p'
+'s/^\([0-9a-fA-F]*\) . VDSO_\([a-zA-Z0-9_]*\)$/\#define vdso_offset_\2\t0x\1/p'

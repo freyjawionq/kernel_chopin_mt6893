@@ -32,18 +32,6 @@
 #include <generated/vdso32-offsets.h>
 #endif
 
-/* Fallback: if gen_vdso_offsets.sh didn't generate vdso_offset_sigtramp from
- * the VDSO_sigtramp alias, use vdso_offset___kernel_rt_sigreturn directly */
-#ifndef vdso_offset_sigtramp
-#ifdef vdso_offset___kernel_rt_sigreturn
-#define vdso_offset_sigtramp	vdso_offset___kernel_rt_sigreturn
-#else
-/* last resort: derive from VDSO_sigtramp which equals __kernel_rt_sigreturn */
-extern const char VDSO_sigtramp[];
-#define vdso_offset_sigtramp	((unsigned long)VDSO_sigtramp)
-#endif
-#endif
-
 #define VDSO_SYMBOL(base, name)						   \
 ({									   \
 	(void *)(vdso_offset_##name - VDSO_LBASE + (unsigned long)(base)); \

@@ -25,6 +25,7 @@
 	.text
 
 	nop
+ENTRY(VDSO_sigtramp)
 ENTRY(__kernel_rt_sigreturn)
 	.cfi_startproc
 	.cfi_signal_frame
@@ -35,3 +36,4 @@ ENTRY(__kernel_rt_sigreturn)
 	svc	#0
 	.cfi_endproc
 ENDPROC(__kernel_rt_sigreturn)
+ENDPROC(VDSO_sigtramp)
