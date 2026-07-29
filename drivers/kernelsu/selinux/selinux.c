@@ -58,8 +58,7 @@ void setup_selinux(const char *domain, struct cred *cred)
 #else
 		struct cred_security_struct *tsec = selinux_cred(cred);
 #endif
-		if (tsec)
-			tsec->permissive = 1;
+		(void)tsec;
 	}
 }
 
