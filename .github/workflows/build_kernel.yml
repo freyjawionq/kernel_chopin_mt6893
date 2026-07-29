@@ -34,10 +34,6 @@ jobs:
           
           echo "Cloning wireguard-linux-compat..."
           git clone -b master --depth=1 https://git.zx2c4.com/wireguard-linux-compat ${{ github.workspace }}/wireguard-linux-compat
-          
-          echo "Recreating KernelSU symlink..."
-          rm -f ${{ github.workspace }}/drivers/kernelsu
-          ln -s ../KernelSU/kernel ${{ github.workspace }}/drivers/kernelsu
 
       - name: Install Build Dependencies
         run: |
