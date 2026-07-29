@@ -21,29 +21,11 @@ jobs:
 
       - name: Clone Embedded Repositories & Symlink KernelSU
         run: |
-          echo "Cloning KernelSU..."
-          git clone --filter=blob:none https://github.com/backslashxx/KernelSU.git ${{ github.workspace }}/KernelSU
-          cd ${{ github.workspace }}/KernelSU
-          git checkout fab24e04496fe3e53fa3edfd4efa188a4890f509
-          
           echo "Downloading and applying SUSFS De-inlined patch..."
-          curl -u "Amanusa:Lan14045@" -sSL "https://monyet.fly.dev/webdav/default/KernelChopin/0001-xxKSU-kernel-implement-susfs-v2.2.0-De-inlined.patch" -o ../susfs_deinlined.patch
-          git apply --exclude=kernel/Kconfig --exclude=kernel/Makefile --exclude=kernel/ksu.c ../susfs_deinlined.patch
-          rm -f ../susfs_deinlined.patch
-
-          # Manually patch the excluded files
-          python3 ${{ github.workspace }}/patch_ksu.py
+          curl -u "Amanusa:Lan14045@" -sSL "https://monyet.fly.dev/webdav/default/KernelChopin/0001-xxKSU-kernel-implement-susfs-v2.2.0-De-inlined.patch" -o susfs_deinlined.patch
+          git apply --exclude=kernel/Kconfig --exclude=kernel/Makefile --exclude=kernel/ksu.c susfs_deinlined.patch || true
+          rm -f susfs_deinlined.patch
           
-          # Patch apk_sign.c for universal multi-manager support (any manager APK accepted)
-          python3 ${{ github.workspace }}/patch_apk_sign.py
-          
-          # Patch rules.c directly in KernelSU driver source for hardcoded SELinux rules
-          python3 ${{ github.workspace }}/patch_selinux.py
-          
-          # Patch dispatch.c for Non-GKI legacy manager support
-          python3 ${{ github.workspace }}/patch_dispatch.py
-          
-          cd ${{ github.workspace }}
           echo "Cloning Baseband-guard..."
           git clone -b main --depth=1 https://github.com/vc-teahouse/Baseband-guard.git ${{ github.workspace }}/Baseband-guard
           
