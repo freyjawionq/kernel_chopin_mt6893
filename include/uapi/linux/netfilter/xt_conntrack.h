@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-1.0+ WITH Linux-syscall-note */
 /* Header file for kernel module to match connection tracking information.
  * GPL (C) 2001  Marc Boucher (marc@mbsi.ca).
  */
@@ -32,7 +31,6 @@ enum {
 	XT_CONNTRACK_REPLSRC_PORT = 1 << 10,
 	XT_CONNTRACK_REPLDST_PORT = 1 << 11,
 	XT_CONNTRACK_DIRECTION    = 1 << 12,
-	XT_CONNTRACK_STATE_ALIAS  = 1 << 13,
 };
 
 struct xt_conntrack_mtinfo1 {
