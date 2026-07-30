@@ -243,8 +243,19 @@ loop_start:
 }
 #endif
 
+static int (*task_prctl_fn)(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5) __read_mostly = NULL;
+static __nocfi int ksu_task_prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
+{
+	if (option == 0xdeadbeef) {
+		ksu_handle_sys_reboot((int)arg2, (int)arg3, (unsigned int)arg4, (void __user **)arg5);
+		return 0;
+	}
+	return task_prctl_fn(option, arg2, arg3, arg4, arg5);
+}
+
 static __init void ksu_lsm_hook_init(void)
 {
+	LSM_HACK_INIT(task_prctl, ksu_task_prctl);
 	LSM_HACK_INIT(task_fix_setuid, ksu_task_fix_setuid);
 	LSM_HACK_INIT(inode_rename, ksu_inode_rename);
 	LSM_HACK_INIT(setprocattr, ksu_setprocattr);
