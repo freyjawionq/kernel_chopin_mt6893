@@ -40,7 +40,6 @@ static int do_get_info(void __user *arg)
 
 	if (is_manager())
 		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
-	cmd.flags |= (1 << 3); // KSU_GET_INFO_FLAG_LEGACY (Non-GKI legacy driver flag)
 	cmd.features = KSU_FEATURE_MAX;
 	cmd.uapi_version = KERNEL_SU_UAPI_VERSION;
 
@@ -64,7 +63,6 @@ static int do_get_info_legacy(void __user *arg)
 
 	if (is_manager())
 		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
-	cmd.flags |= (1 << 3); // KSU_GET_INFO_FLAG_LEGACY (Non-GKI legacy driver flag)
 	cmd.features = KSU_FEATURE_MAX;
 
 	if (ksuflags_override)

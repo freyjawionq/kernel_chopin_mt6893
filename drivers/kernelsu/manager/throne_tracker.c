@@ -1,4 +1,6 @@
 uid_t ksu_manager_appid = KSU_INVALID_APPID;
+uid_t ksu_manager_appids[KSU_MAX_MANAGERS];
+int ksu_manager_count = 0;
 
 #define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list"
 
@@ -219,7 +221,6 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 				goto skip_iterate;
 
 			crown_manager(candidate_path, uid_data);
-			stop = 1;
 
 skip_iterate:
 			list_del(&pos->list);
