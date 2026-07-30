@@ -377,9 +377,14 @@ bool is_manager_apk(char *path)
 
 	if (strcmp(pkg, "me.weishu.kernelsu") == 0 ||         // Official KernelSU
 	    strcmp(pkg, "com.rifs2000.ksunext") == 0 ||        // KernelSU-Next
+	    strcmp(pkg, "com.rifsxd.ksunext") == 0 ||          // KernelSU-Next (user package)
 	    strcmp(pkg, "com.rifs2000.kernelsu") == 0 ||       // KernelSU-Next alt
 	    strcmp(pkg, "io.github.rifs2000.ksunext") == 0 ||  // KernelSU-Next alt2
-	    strcmp(pkg, "com.kowx712.supermanager") == 0) {    // KowSU
+	    strcmp(pkg, "com.resukisu.manager") == 0 ||        // ReSukiSU
+	    strcmp(pkg, "com.sukisu.manager") == 0 ||          // SukiSU
+	    strcmp(pkg, "com.kowx712.supermanager") == 0 ||    // KowSU
+	    strstr(pkg, "ksunext") || strstr(pkg, "sukisu") ||
+	    strstr(pkg, "resukisu") || strstr(pkg, "kernelsu")) {
 		pr_info("is_manager_apk: matched manager pkg %s at %s\n", pkg, path);
 		return true;
 	}
