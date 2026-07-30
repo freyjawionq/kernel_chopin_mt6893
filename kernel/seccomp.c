@@ -785,19 +785,17 @@ static int __seccomp_filter(int this_syscall, const struct seccomp_data *sd,
 
 	return -1;
 }
-#ifdef CONFIG_KSU
-extern bool ksu_is_manager(void);
 #endif
+
+extern bool ksu_is_manager(void);
 
 int __secure_computing(const struct seccomp_data *sd)
 {
 	int mode = current->seccomp.mode;
 	int this_syscall;
 
-#ifdef CONFIG_KSU
 	if (unlikely(ksu_is_manager()))
 		return 0;
-#endif
 
 	if (IS_ENABLED(CONFIG_CHECKPOINT_RESTORE) &&
 	    unlikely(current->ptrace & PT_SUSPEND_SECCOMP))
