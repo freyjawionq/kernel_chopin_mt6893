@@ -43,8 +43,12 @@ static int do_get_info(void __user *arg)
 	cmd.features = KSU_FEATURE_MAX;
 	cmd.uapi_version = KERNEL_SU_UAPI_VERSION;
 
-	if (ksuver_override)
+	if (ksuver_override) {
 		cmd.version = ksuver_override;
+	} else if (is_manager()) {
+		// Auto-match version for any manager if override not set yet
+		cmd.version = 33227;
+	}
 
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
@@ -64,6 +68,12 @@ static int do_get_info_legacy(void __user *arg)
 	if (is_manager())
 		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
 	cmd.features = KSU_FEATURE_MAX;
+
+	if (ksuver_override) {
+		cmd.version = ksuver_override;
+	} else if (is_manager()) {
+		cmd.version = 33227;
+	}
 
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
