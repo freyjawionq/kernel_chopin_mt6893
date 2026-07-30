@@ -5,8 +5,12 @@ on:
 
 jobs:
   build:
-    name: Build Kernel
+    name: Build Kernel (${{ matrix.variant }})
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [NonSusFS, SusFS]
 
     steps:
       - name: Checkout Kernel Source
@@ -75,17 +79,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ccache
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.sha }}
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ matrix.variant }}-${{ github.sha }}
           restore-keys: |
+            ccache-${{ runner.os }}-${{ github.ref_name }}-${{ matrix.variant }}-
             ccache-${{ runner.os }}-${{ github.ref_name }}-
             ccache-${{ runner.os }}-
 
-      - name: Build NonSusFS Variant
-        id: build_nonsusfs
+      - name: Build & Package Kernel Variant (${{ matrix.variant }})
         run: |
           CLANG_DIR="${{ github.workspace }}/toolchains/clang"
-          KERNEL_DIR="${{ github.workspace }}"
-
           export PATH="${CLANG_DIR}/bin:$PATH"
           export KBUILD_BUILD_TIMESTAMP="$(TZ='Asia/Jakarta' date)"
           export USE_CCACHE=1
@@ -98,17 +100,16 @@ jobs:
           export CCACHE_HARDLINK=1
           ccache -s
 
-          # Set defconfig to non-susfs
-          sed -i 's/^CONFIG_KSU_SUSFS=y/# CONFIG_KSU_SUSFS is not set/' \
-            arch/arm64/configs/chopin_defconfig || true
+          VARIANT="${{ matrix.variant }}"
+          if [ "$VARIANT" = "SusFS" ]; then
+            sed -i 's/^# CONFIG_KSU_SUSFS is not set/CONFIG_KSU_SUSFS=y/' arch/arm64/configs/chopin_defconfig || true
+          else
+            sed -i 's/^CONFIG_KSU_SUSFS=y/# CONFIG_KSU_SUSFS is not set/' arch/arm64/configs/chopin_defconfig || true
+          fi
 
-          # Create out dir
           mkdir -p out
-
-          # Generate config
           make O=out ARCH=arm64 chopin_defconfig
 
-          # Build
           make -j$(nproc --all) O=out \
             ARCH=arm64 \
             CC="ccache clang" \
@@ -128,27 +129,12 @@ jobs:
 
           ccache -s
 
-          if [ -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
-            echo "BUILD_NONSUSFS_OK=true" >> $GITHUB_ENV
-          else
-            echo "NonSusFS build FAILED"
-            # Debug: show vdso offsets header and nm output
-            if [ -f "out/arch/arm64/kernel/vdso/vdso.so.dbg" ]; then
-              echo "=== llvm-nm vdso.so.dbg output ==="
-              llvm-nm out/arch/arm64/kernel/vdso/vdso.so.dbg | sort
-            fi
-            if [ -f "out/include/generated/vdso-offsets.h" ]; then
-              echo "=== vdso-offsets.h ==="
-              cat out/include/generated/vdso-offsets.h
-            fi
+          if [ ! -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
+            echo "Build FAILED for $VARIANT"
             cat error.log | tail -50
             exit 1
           fi
 
-      - name: Package NonSusFS Variant
-        if: env.BUILD_NONSUSFS_OK == 'true'
-        run: |
-          CLANG_DIR="${{ github.workspace }}/toolchains/clang"
           CLANG_RAW=$("${CLANG_DIR}/bin/clang" --version 2>/dev/null | head -1)
           CLANG_VER=$(echo "$CLANG_RAW" | grep -oP 'clang version \K[0-9.]+' || echo "r563880c")
           KV=$(grep -m1 "^VERSION" Makefile | awk '{print $3}')
@@ -160,7 +146,7 @@ jobs:
           BUILD_NUM="${{ github.run_number }}"
           BUILD_NUM_PADDED=$(printf "%04d" "$BUILD_NUM")
 
-          ZIPNAME="ChenXia-kernel-v1-${{ env.DATE_STR }}-${BUILD_NUM_PADDED}-NonSusFS.zip"
+          ZIPNAME="ChenXia-kernel-v1-${{ env.DATE_STR }}-${BUILD_NUM_PADDED}-${VARIANT}.zip"
 
           cp out/arch/arm64/boot/Image.gz-dtb "${{ github.workspace }}/AnyKernel3/"
           cd "${{ github.workspace }}/AnyKernel3"
@@ -169,123 +155,23 @@ jobs:
 
           FILE_MD5=$(md5sum "${ZIPNAME}" | awk '{print $1}')
 
-          printf "Build info:\nDevice: POCO X3 GT [chopin]\nKernel Version: %s\nCompiler: AOSP Clang %s\nBuild host: ChenXia\nCommit / Branch: (%s) / %s\nBuild variant: KSUNext / Stable (clean)\nVariant: NonSusFS\nTimestamp: %s\nMD5: %s\n" \
+          printf "Build info:\nDevice: POCO X3 GT [chopin]\nKernel Version: %s\nCompiler: AOSP Clang %s\nBuild host: ChenXia\nCommit / Branch: (%s) / %s\nBuild variant: KSUNext / Stable (clean)\nVariant: %s\nTimestamp: %s\nMD5: %s\n" \
             "$KERNEL_VER" "$CLANG_VER" "$COMMIT_HASH" "$BRANCH" \
-            "$(TZ='Asia/Jakarta' date '+%Y%m%d-%H%M')" "$FILE_MD5" > build_info_nonsusfs.txt
+            "$(TZ='Asia/Jakarta' date '+%Y%m%d-%H%M')" "$FILE_MD5" > "build_info_${VARIANT}.txt"
 
-          echo "ZIPNAME_NONSUSFS=${ZIPNAME}" >> $GITHUB_ENV
-          cat build_info_nonsusfs.txt
+          echo "ZIPNAME=${ZIPNAME}" >> $GITHUB_ENV
+          echo "VARIANT=${VARIANT}" >> $GITHUB_ENV
 
-      - name: Build SusFS Variant
-        id: build_susfs
-        run: |
-          CLANG_DIR="${{ github.workspace }}/toolchains/clang"
-
-          export PATH="${CLANG_DIR}/bin:$PATH"
-          export KBUILD_BUILD_TIMESTAMP="$(TZ='Asia/Jakarta' date)"
-          export USE_CCACHE=1
-          export CCACHE_DIR=~/.ccache
-          export CCACHE_COMPRESS=1
-          export CCACHE_COMPRESSLEVEL=1
-          export CCACHE_MAXSIZE=10G
-          export CCACHE_SLOPPINESS=file_macro,time_macros,include_file_mtime,include_file_ctime,pch_defines
-          export CCACHE_NOHASH=1
-          export CCACHE_HARDLINK=1
-          ccache -s
-
-          # Enable SusFS
-          sed -i 's/^# CONFIG_KSU_SUSFS is not set/CONFIG_KSU_SUSFS=y/' \
-            arch/arm64/configs/chopin_defconfig || true
-
-          # We reuse the existing out directory for incremental build (much faster!)
-          # Generate config with SUSFS enabled
-          make O=out ARCH=arm64 chopin_defconfig
-
-          # Build
-          make -j$(nproc --all) O=out \
-            ARCH=arm64 \
-            CC="ccache clang" \
-            HOSTCC=gcc \
-            HOSTLD=ld \
-            CLANG_TRIPLE=aarch64-none-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-            LD=ld.lld \
-            STRIP=llvm-strip \
-            AS=llvm-as \
-            AR=llvm-ar \
-            NM=llvm-nm \
-            OBJCOPY=llvm-objcopy \
-            OBJDUMP=llvm-objdump \
-            CONFIG_NO_ERROR_ON_MISMATCH=y 2>&1 | tee error.log
-
-          # Revert defconfig back to non-susfs (don't pollute the source)
-          sed -i 's/^CONFIG_KSU_SUSFS=y/# CONFIG_KSU_SUSFS is not set/' \
-            arch/arm64/configs/chopin_defconfig || true
-
-          ccache -s
-
-          if [ -f "out/arch/arm64/boot/Image.gz-dtb" ]; then
-            echo "BUILD_SUSFS_OK=true" >> $GITHUB_ENV
-          else
-            echo "SusFS build FAILED"
-            cat error.log | tail -50
-            exit 1
-          fi
-
-      - name: Package SusFS Variant
-        if: env.BUILD_SUSFS_OK == 'true'
-        run: |
-          CLANG_DIR="${{ github.workspace }}/toolchains/clang"
-          CLANG_RAW=$("${CLANG_DIR}/bin/clang" --version 2>/dev/null | head -1)
-          CLANG_VER=$(echo "$CLANG_RAW" | grep -oP 'clang version \K[0-9.]+' || echo "r563880c")
-          KV=$(grep -m1 "^VERSION" Makefile | awk '{print $3}')
-          KPL=$(grep -m1 "^PATCHLEVEL" Makefile | awk '{print $3}')
-          KSL=$(grep -m1 "^SUBLEVEL" Makefile | awk '{print $3}')
-          KERNEL_VER="${KV}.${KPL}.${KSL}"
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          BUILD_NUM="${{ github.run_number }}"
-          BUILD_NUM_PADDED=$(printf "%04d" "$BUILD_NUM")
-
-          ZIPNAME="ChenXia-kernel-v1-${{ env.DATE_STR }}-${BUILD_NUM_PADDED}-SusFS.zip"
-
-          cp out/arch/arm64/boot/Image.gz-dtb "${{ github.workspace }}/AnyKernel3/"
-          cd "${{ github.workspace }}/AnyKernel3"
-          zip -r9 "../${ZIPNAME}" * -x '*.git*' README.md '*placeholder' >/dev/null
-          cd "${{ github.workspace }}"
-
-          FILE_MD5=$(md5sum "${ZIPNAME}" | awk '{print $1}')
-
-          printf "Build info:\nDevice: POCO X3 GT [chopin]\nKernel Version: %s\nCompiler: AOSP Clang %s\nBuild host: ChenXia\nCommit / Branch: (%s) / %s\nBuild variant: KSUNext / Stable (clean)\nVariant: SusFS\nTimestamp: %s\nMD5: %s\n" \
-            "$KERNEL_VER" "$CLANG_VER" "$COMMIT_HASH" "$BRANCH" \
-            "$(TZ='Asia/Jakarta' date '+%Y%m%d-%H%M')" "$FILE_MD5" > build_info_susfs.txt
-
-          echo "ZIPNAME_SUSFS=${ZIPNAME}" >> $GITHUB_ENV
-          cat build_info_susfs.txt
-
-      - name: Upload NonSusFS Artifact
-        if: env.BUILD_NONSUSFS_OK == 'true'
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ChenXia-kernel-NonSusFS-${{ github.run_number }}
+          name: ChenXia-kernel-${{ matrix.variant }}-${{ github.run_number }}
           path: |
-            ChenXia-kernel-*-NonSusFS.zip
-            build_info_nonsusfs.txt
-          if-no-files-found: warn
-
-      - name: Upload SusFS Artifact
-        if: env.BUILD_SUSFS_OK == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ChenXia-kernel-SusFS-${{ github.run_number }}
-          path: |
-            ChenXia-kernel-*-SusFS.zip
-            build_info_susfs.txt
+            ChenXia-kernel-*-${{ matrix.variant }}.zip
+            build_info_${{ matrix.variant }}.txt
           if-no-files-found: warn
 
       - name: Send to Telegram
-        if: env.BUILD_NONSUSFS_OK == 'true' && env.BUILD_SUSFS_OK == 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_TO }}
@@ -297,25 +183,12 @@ jobs:
             exit 0
           fi
 
-          # Use shell variables derived from step/env configurations
-          # Ensure we reference env variables from GITHUB_ENV correctly via shell syntax $ZIPNAME_NONSUSFS
-          
-          CAPTION_NS=$(printf "<b>✅ NonSusFS Build Success!</b>\n<pre>%s</pre>\n<a href=\"%s\">Commit</a> | Triggered by: %s" "$(cat build_info_nonsusfs.txt)" "$COMMIT_URL" "$ACTOR")
-          
+          CAPTION=$(printf "<b>✅ %s Build Success!</b>\n<pre>%s</pre>\n<a href=\"%s\">Commit</a> | Triggered by: %s" "${{ matrix.variant }}" "$(cat build_info_${{ matrix.variant }}.txt)" "$COMMIT_URL" "$ACTOR")
+
           curl -s -F chat_id="${TG_CHAT}" \
-               -F document=@"${ZIPNAME_NONSUSFS}" \
-               --form-string "caption=${CAPTION_NS}" \
+               -F document=@"${{ env.ZIPNAME }}" \
+               --form-string "caption=${CAPTION}" \
                -F parse_mode="HTML" \
                "https://api.telegram.org/bot${TG_TOKEN}/sendDocument"
 
-          sleep 3
-
-          CAPTION_S=$(printf "<b>✅ SusFS Build Success!</b>\n<pre>%s</pre>\n<a href=\"%s\">Commit</a> | Triggered by: %s" "$(cat build_info_susfs.txt)" "$COMMIT_URL" "$ACTOR")
-
-          curl -s -F chat_id="${TG_CHAT}" \
-               -F document=@"${ZIPNAME_SUSFS}" \
-               --form-string "caption=${CAPTION_S}" \
-               -F parse_mode="HTML" \
-               "https://api.telegram.org/bot${TG_TOKEN}/sendDocument"
-
-          echo "Telegram upload done!"
+          echo "Telegram upload done for ${{ matrix.variant }}!"
