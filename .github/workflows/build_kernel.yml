@@ -14,10 +14,20 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Cache APT Packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt/archives
+            /var/lib/apt/lists
+          key: apt-deps-v1-${{ runner.os }}
+          restore-keys: |
+            apt-deps-v1-
+
       - name: Install Build Dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             bc bison build-essential ccache curl flex \
             gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
             git libelf-dev libssl-dev lz4 zip
