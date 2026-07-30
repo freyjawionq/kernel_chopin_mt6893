@@ -11,13 +11,13 @@ MDIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 $(info -- KDIR: $(KDIR))
 $(info -- MDIR: $(MDIR))
 
-# Dynamic KernelSU version calculation
+# Dynamic KernelSU version calculation (defaulting to KernelSU Next 3.3.0+ baseline: 33227)
 ifndef KSU_VERSION
 KSU_GIT_COUNT := $(shell cd $(MDIR) 2>/dev/null && git rev-list --count HEAD 2>/dev/null)
 ifneq ($(KSU_GIT_COUNT),)
-KSU_VERSION := $(shell expr 32000 + $(KSU_GIT_COUNT))
+KSU_VERSION := $(shell expr 33000 + $(KSU_GIT_COUNT))
 else
-KSU_VERSION := 32565
+KSU_VERSION := 33227
 endif
 endif
 
