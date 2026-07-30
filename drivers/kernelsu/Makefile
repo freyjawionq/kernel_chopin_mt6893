@@ -13,6 +13,7 @@ $(info -- MDIR: $(MDIR))
 
 # driver version matches backslashxx KernelSU baseline (v3.2.5 = 32565)
 CFLAGS_ksu.o += -DKSU_VERSION=32565
+CFLAGS_ksu.o += -Wno-error -Wno-strict-prototypes -Wno-old-style-definition
 
 ifndef KSU_EXPECTED_SIZE
 KSU_EXPECTED_SIZE := 0x033b

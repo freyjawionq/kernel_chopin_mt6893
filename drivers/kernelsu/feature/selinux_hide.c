@@ -269,12 +269,8 @@ skip_destroy:
 	return selinux_transaction_write_fn(file, buf, size, pos);
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 4, 0) && defined(KSU_COMPAT_HAS_SELINUX_STATE)
 extern struct selinux_state selinux_state;
 #define ksu_selinux_kernel_status_page() selinux_kernel_status_page(&selinux_state)
-#else
-#define ksu_selinux_kernel_status_page() selinux_kernel_status_page()
-#endif
 
 static struct page *ksu_fake_status_page __read_mostly = NULL;
 
