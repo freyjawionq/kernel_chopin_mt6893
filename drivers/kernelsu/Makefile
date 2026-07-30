@@ -11,8 +11,18 @@ MDIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 $(info -- KDIR: $(KDIR))
 $(info -- MDIR: $(MDIR))
 
-# driver version matches backslashxx KernelSU baseline (v3.2.5)
-CFLAGS_ksu.o += -DKSU_VERSION=32565
+# Dynamic KernelSU version calculation
+ifndef KSU_VERSION
+KSU_GIT_COUNT := $(shell cd $(MDIR) 2>/dev/null && git rev-list --count HEAD 2>/dev/null)
+ifneq ($(KSU_GIT_COUNT),)
+KSU_VERSION := $(shell expr 32000 + $(KSU_GIT_COUNT))
+else
+KSU_VERSION := 32565
+endif
+endif
+
+CFLAGS_ksu.o += -DKSU_VERSION=$(KSU_VERSION)
+$(info -- KernelSU Version: $(KSU_VERSION))
 
 ifndef KSU_EXPECTED_SIZE
 KSU_EXPECTED_SIZE := 0x033b
