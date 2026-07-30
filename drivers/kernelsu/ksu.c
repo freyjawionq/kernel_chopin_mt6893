@@ -5,11 +5,10 @@
 #error "LKM is only supported on ARM64!"
 #endif
 
-// for OOT builds like on ddk, just enable everything
 #ifndef CONFIG_KSU_HEURISTIC_IN_TREE_BUILD
-	#define CONFIG_KSU_LSM_SECURITY_HOOKS 1
 	#define CONFIG_KSU_KPROBES_KSUD 1
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+		#define CONFIG_KSU_LSM_SECURITY_HOOKS 1
 		#define CONFIG_KSU_HACK_ARM64_BRANCH_LINK 1
 	#else
 		#define CONFIG_KSU_TAMPER_SYSCALL_TABLE 1
@@ -126,9 +125,11 @@
 	#include "hook/lsm_hooks_manual.c"
 #endif
 
+#ifdef CONFIG_KSU_LSM_SECURITY_HOOKS
 #include "selinux/selinux.c"
 #include "selinux/sepolicy.c"
 #include "selinux/rules.c"
+#endif
 
 #ifdef CONFIG_KSU_TAMPER_SYSCALL_TABLE
 #ifdef CONFIG_ARM64
