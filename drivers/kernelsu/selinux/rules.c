@@ -86,6 +86,10 @@ static int apply_kernelsu_rules_fn(void *ptr)
 	ksu_allow(db, "init", "adb_data_file", "dir", ALL); // #1289
 
 	// copied from Magisk rules
+	// allow untrusted_app (KernelSU Manager) to read proc_filesystems
+	ksu_allow(db, "untrusted_app", "proc_filesystems", "file", "read");
+	ksu_allow(db, "untrusted_app_all", "proc_filesystems", "file", "read");
+
 	// suRights
 	ksu_allow(db, "servicemanager", KERNEL_SU_DOMAIN, "dir", "search");
 	ksu_allow(db, "servicemanager", KERNEL_SU_DOMAIN, "dir", "read");
