@@ -2,6 +2,12 @@ uid_t ksu_manager_appid = KSU_INVALID_APPID;
 uid_t ksu_manager_appids[KSU_MAX_MANAGERS];
 int ksu_manager_count = 0;
 
+bool ksu_is_manager(void)
+{
+	return is_manager();
+}
+EXPORT_SYMBOL_GPL(ksu_is_manager);
+
 #define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list"
 
 struct uid_data {
