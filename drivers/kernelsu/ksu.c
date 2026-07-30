@@ -129,11 +129,9 @@
 	#include "hook/lsm_hooks_manual.c"
 #endif
 
-#ifdef CONFIG_KSU_LSM_SECURITY_HOOKS
 #include "selinux/selinux.c"
 #include "selinux/sepolicy.c"
 #include "selinux/rules.c"
-#endif
 
 #ifdef CONFIG_KSU_TAMPER_SYSCALL_TABLE
 #ifdef CONFIG_ARM64
