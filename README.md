@@ -1,6 +1,19 @@
-# ⚡ ChenXia Kernel — Xiaomi POCO X3 GT / Redmi Note 10 Pro 5G (Chopin)
+# ⚡ ChenXia Kernel — POCO X3 GT / Redmi Note 10 Pro 5G (chopin)
 
-A high-performance, feature-packed custom Linux 4.14 kernel for **Xiaomi Chopin (MT6893 / Dimensity 1100)**, engineered for peak responsiveness, advanced root management, and complete Play Integrity stealth.
+A high-performance, feature-packed custom Linux 4.14 kernel for **POCO X3 GT / Redmi Note 10 Pro 5G (`chopin` / `chopin_global`)** powered by **MediaTek Dimensity 1100 (MT6893)**, engineered for peak responsiveness, advanced root management, and complete Play Integrity stealth.
+
+---
+
+## 📱 Device Specifications
+
+| Parameter | Details |
+| :--- | :--- |
+| **Device Model** | POCO X3 GT (`21061110AG`) / Redmi Note 10 Pro 5G |
+| **Codename** | `chopin` / `chopin_global` |
+| **Processor** | MediaTek Dimensity 1100 5G (`MT6893` / `MT6891`) |
+| **Supported OS** | Android 13 (SDK 33) / MIUI 14 (`V14.0.6.0.TKPMIXM`) & Custom ROMs |
+| **Kernel Version** | `4.14.357-ChenXia` |
+| **Defconfig** | `arch/arm64/configs/chopin_defconfig` |
 
 ---
 
@@ -14,7 +27,7 @@ A high-performance, feature-packed custom Linux 4.14 kernel for **Xiaomi Chopin 
   - **KowSU Manager** (`com.kowx712.supermanager`)
   - **Official KernelSU Manager** (`me.weishu.kernelsu`)
   - **Spoof / Hidden Managers** (V2 Signature matching via `dummy.keystore`).
-- **Dynamic Version Auto-Matching**: Seamless `CHANGE_KSUVER` supercall handling so the driver automatically matches the exact version expected by whichever Manager app is opened (e.g. `33227` for Next, `32565` for KowSU/backslashxx, `12000` for ReSukiSU, `11874` for Official).
+- **Dynamic Version Auto-Matching**: Seamless `CHANGE_KSUVER` supercall handling so the driver automatically matches the exact version expected by whichever Manager app is opened (`33227` for Next, `32565` for KowSU/backslashxx, `12000` for ReSukiSU, `11874` for Official).
 - **Clean Production Build**: Removed legacy PR signature warning banners for a clean UI experience.
 - **Syscall Table Tampering (`CONFIG_KSU_TAMPER_SYSCALL_TABLE=y`)**: Full sucompat fallback protection for legacy 4.14 syscalls without overhead.
 
@@ -35,9 +48,8 @@ A high-performance, feature-packed custom Linux 4.14 kernel for **Xiaomi Chopin 
 
 ## 🛠️ Build Information
 
-- **Kernel Version**: `4.14.357-ChenXia`
 - **Compiler**: `ZyCromerZ AOSP Clang 19.0.0 (LTO Enabled)`
-- **Target Device**: `Xiaomi Chopin (POCO X3 GT / Redmi Note 10 Pro 5G - MT6893)`
+- **Target Architecture**: `ARM64 (aarch64)`
 - **CI/CD Workflow**: GitHub Actions Parallel Matrix (`NonSusFS` & `SusFS` variants in ~10 mins).
 
 ---
