@@ -1,22 +1,31 @@
-Linux kernel
-============
+Linux kernel release 4.x <http://kernel.org/>
+===========================================
 
-# Aether-vEleatic-Rosemary
-# Kernel 4.14
-# Xiaomi rosemary
+These are the release notes for the Linux kernel source code for Xiaomi Chopin (POCO X3 GT / Redmi Note 10 Pro 5G - MT6893).
 
-Definition: Implementing BBRv2 on the 4.14 kernel
+WHAT IS THE LINUX KERNEL?
+-------------------------
 
-Disclaimer
-* This kernel is based on the Rosemary LineageOS 23 kernel
-* The BBRv2 used in this kernel is a congestion control algorithm developed by Google
-* I am not responsible for any issues users may encounter, such as bootloops or other malfunctions
-* The purpose of this project is purely for experiment and exploration
+The Linux kernel is an open-source Unix-like operating system kernel originally created by Linus Torvalds in 1991.
 
+DOCUMENTATION
+-------------
 
-⚠️ Warning: This is a custom kernel for learning purposes. Use at your own risk.
+The Documentation/ directory contains extensive documentation for the Linux kernel.
 
-## Credits
-- LineageOS project (kernel base)
-- Google (BBRv2 algorithm)
-- cx9208/bbrplus
+COMPILING THE KERNEL
+--------------------
+
+To compile the kernel for Xiaomi Chopin:
+
+  export ARCH=arm64
+  export SUBARCH=arm64
+  make chopin_defconfig
+  make -j$(nproc)
+
+TARGET SPECIFICATIONS
+---------------------
+
+  Device: Xiaomi POCO X3 GT / Redmi Note 10 Pro 5G (chopin / MT6893)
+  Kernel Version: 4.14.357
+  Architecture: ARM64 (aarch64)
