@@ -102,6 +102,12 @@ jobs:
           VARIANT="${{ matrix.variant }}"
           if [ "$VARIANT" = "SusFS" ]; then
             sed -i 's/^# CONFIG_KSU_SUSFS is not set/CONFIG_KSU_SUSFS=y/' arch/arm64/configs/chopin_defconfig || true
+            echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> arch/arm64/configs/chopin_defconfig
+            echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSYMS=y" >> arch/arm64/configs/chopin_defconfig
+            echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> arch/arm64/configs/chopin_defconfig
+            echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> arch/arm64/configs/chopin_defconfig
+            echo "CONFIG_KSU_SUSFS_SUS_MAP=y" >> arch/arm64/configs/chopin_defconfig
+            echo "# CONFIG_KSU_SUSFS_TRY_UMOUNT is not set" >> arch/arm64/configs/chopin_defconfig
           else
             sed -i 's/^CONFIG_KSU_SUSFS=y/# CONFIG_KSU_SUSFS is not set/' arch/arm64/configs/chopin_defconfig || true
           fi
