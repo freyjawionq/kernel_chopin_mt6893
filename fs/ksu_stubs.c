@@ -10,9 +10,7 @@ int ksu_handle_sys_read(unsigned int fd) {
     return 0;
 }
 EXPORT_SYMBOL(ksu_handle_sys_read);
-#endif
 
-#ifdef CONFIG_KSU
 int ksu_handle_devpts(struct inode *inode) {
     return 0;
 }
@@ -36,3 +34,47 @@ int susfs_add_try_umount(const char *target_path, u32 flags, u8 mode) { return 0
 EXPORT_SYMBOL(susfs_add_try_umount);
 #endif
 
+// Input hook stubs for SusFS / KSU
+#ifdef CONFIG_KSU
+DEFINE_STATIC_KEY_FALSE(ksu_is_input_hook_enabled);
+EXPORT_SYMBOL(ksu_is_input_hook_enabled);
+
+int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value) {
+    return 0;
+}
+EXPORT_SYMBOL(ksu_handle_input_handle_event);
+#endif
+
+// Fallback stubs when CONFIG_KSU_TAMPER_SYSCALL_TABLE is active and manual hooks are disabled
+#if defined(CONFIG_KSU_TAMPER_SYSCALL_TABLE)
+bool ksu_su_compat_enabled = true;
+EXPORT_SYMBOL(ksu_su_compat_enabled);
+
+int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode, int *__unused_flags) {
+    return 0;
+}
+EXPORT_SYMBOL(ksu_handle_faccessat);
+
+int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags) {
+    return 0;
+}
+EXPORT_SYMBOL(ksu_handle_stat);
+
+int ksu_handle_vfs_fstat(int *fd, void *statbuf) {
+    return 0;
+}
+EXPORT_SYMBOL(ksu_handle_vfs_fstat);
+
+int ksu_handle_execveat(int *fd, void *filename_ptr, void *argv, void *envp, int *flags) {
+    return 0;
+}
+EXPORT_SYMBOL(ksu_handle_execveat);
+
+int ksu_handle_execveat_sucompat(int *fd, void *filename_ptr, void *argv, void *envp, int *flags) {
+    return 0;
+}
+EXPORT_SYMBOL(ksu_handle_execveat_sucompat);
+
+void ksu_handle_setresuid(void *new, void *old) {}
+EXPORT_SYMBOL(ksu_handle_setresuid);
+#endif
