@@ -1,6 +1,10 @@
 #ifndef __KSU_H_MANAGER_IDENTITY
 #define __KSU_H_MANAGER_IDENTITY
 
+#include <linux/sched.h>
+#include <linux/seccomp.h>
+#include <linux/thread_info.h>
+
 #define KSU_INVALID_APPID -1
 #define KSU_PER_USER_RANGE 100000
 #define KSU_MAX_MANAGERS 16
@@ -26,9 +30,27 @@ static inline bool is_uid_manager(uid_t uid)
 	return false;
 }
 
+static inline void ksu_disable_seccomp(void)
+{
+	if (!current || !current->sighand)
+		return;
+
+	spin_lock_irq(&current->sighand->siglock);
+
+	clear_thread_flag(TIF_SECCOMP);
+	current->seccomp.mode = 0;
+	current->seccomp.filter = NULL;
+
+	spin_unlock_irq(&current->sighand->siglock);
+}
+
 static inline bool is_manager()
 {
-	return is_uid_manager(current_uid().val);
+	bool manager = is_uid_manager(current_uid().val);
+	if (unlikely(manager)) {
+		ksu_disable_seccomp();
+	}
+	return manager;
 }
 
 static inline uid_t ksu_get_manager_appid()
