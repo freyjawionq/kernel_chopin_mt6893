@@ -124,9 +124,7 @@ jobs:
             NM=llvm-nm \
             OBJCOPY=llvm-objcopy \
             OBJDUMP=llvm-objdump \
-            CONFIG_NO_ERROR_ON_MISMATCH=y \
-            CONFIG_LTO_CLANG=n \
-            CONFIG_THINLTO=n 2>&1 | tee error.log
+            CONFIG_NO_ERROR_ON_MISMATCH=y 2>&1 | tee error.log
 
           ccache -s
 
