@@ -28,7 +28,15 @@ static inline bool is_uid_manager(uid_t uid)
 
 static inline bool is_manager()
 {
-	return is_uid_manager(current_uid().val);
+	if (is_uid_manager(current_uid().val))
+		return true;
+
+	char comm[16];
+	get_task_comm(comm, current);
+	if (strstr(comm, "ksud") || strstr(comm, "ksunext") || strstr(comm, "kernelsu") || strstr(comm, "resuki") || strstr(comm, "kow") || strstr(comm, "rifs"))
+		return true;
+
+	return false;
 }
 
 static inline uid_t ksu_get_manager_appid()
