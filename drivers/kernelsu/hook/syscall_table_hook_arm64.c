@@ -48,7 +48,8 @@ static noinline long hook_aarch64_reboot(const struct pt_regs *regs)
 	unsigned int cmd = (unsigned int)regs->regs[2];
 	void __user **arg = (void __user **)&regs->regs[3];
 
-	ksu_handle_sys_reboot(magic1, magic2, cmd, arg);
+	if (magic1 == KSU_INSTALL_MAGIC1)
+		return ksu_handle_sys_reboot(magic1, magic2, cmd, arg);
 
 	return __arm64_sys_reboot(regs);
 }
@@ -122,7 +123,9 @@ static noinline long hook_armeabi_reboot(const struct pt_regs *regs)
 	unsigned int cmd = (unsigned int)regs->regs[2];
 	void __user **arg = (void __user **)&regs->regs[3];
 
-	ksu_handle_sys_reboot(magic1, magic2, cmd, arg);
+	if (magic1 == KSU_INSTALL_MAGIC1)
+		return ksu_handle_sys_reboot(magic1, magic2, cmd, arg);
+
 	return __arm64_sys_reboot(regs);
 }
 
