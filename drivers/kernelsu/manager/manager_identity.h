@@ -33,7 +33,7 @@ static inline bool is_manager()
 
 	char comm[16];
 	get_task_comm(comm, current);
-	if (strstr(comm, "ksud") || strstr(comm, "ksunext") || strstr(comm, "kernelsu") || strstr(comm, "kernels") || strstr(comm, "weishu") || strstr(comm, "resuki") || strstr(comm, "kow") || strstr(comm, "superman") || strstr(comm, "manager") || strstr(comm, "rifs") || strstr(comm, "ksu"))
+	if (strstr(comm, "ksud") || strstr(comm, "ksunext") || strstr(comm, "kernelsu") || strstr(comm, "kernels") || strstr(comm, "resuki") || strstr(comm, "kow") || strstr(comm, "superman") || strstr(comm, "manager") || strstr(comm, "rifs") || strstr(comm, "ksu"))
 		return true;
 
 	return false;
