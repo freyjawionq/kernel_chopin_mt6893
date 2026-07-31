@@ -336,15 +336,21 @@ static void read_and_replace_syscall(void *old_ptr, unsigned long syscall_nr, vo
 	unsigned long offset = addr & ~PAGE_MASK; // offset_in_page
 
 	struct page *page = phys_to_page(__pa(base));
-	if (!page)
-		return;
+	void *writable_addr = NULL;
+	if (page) {
+		writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
+	}
 
-	void *writable_addr = vmap(&page, 1, VM_MAP, PAGE_KERNEL);
-	if (!writable_addr)
-		return;
+	void **target_slot = NULL;
+	if (writable_addr) {
+		target_slot = (void **)((unsigned long)writable_addr + offset);
+	} else {
+		set_memory_rw(base, 1);
+		target_slot = syscall_slot_addr;
+	}
 
-	// use the alias
-	void **target_slot = (void **)((unsigned long)writable_addr + offset);
+	if (!target_slot)
+		return;
 
 	// copy syscall's addr to storage variable
 	*(void **)old_ptr = *target_slot;
@@ -356,7 +362,11 @@ static void read_and_replace_syscall(void *old_ptr, unsigned long syscall_nr, vo
 
 	stop_machine(patch_syscall_slot_stop_machine, (void *)&param, NULL);
 
-	vunmap(writable_addr);
+	if (writable_addr) {
+		vunmap(writable_addr);
+	} else {
+		set_memory_ro(base, 1);
+	}
 	smp_mb(); 
 }
 
