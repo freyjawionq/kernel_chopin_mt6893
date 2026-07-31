@@ -56,10 +56,10 @@ static int do_get_info(void __user *arg)
 			cmd.version = 12000; // ReSukiSU / SukiSU Manager
 		} else if (strstr(comm, "kow")) {
 			cmd.version = 32565; // KowSU Manager
-		} else if (strstr(comm, "weishu") || strstr(comm, "kernelsu")) {
-			cmd.version = 11874; // Official Manager
+		} else if (strstr(comm, "weishu") || strstr(comm, "kernelsu") || strstr(comm, "kernels")) {
+			cmd.version = 12100; // Official Manager v1.0+
 		} else {
-			cmd.version = 32565;
+			cmd.version = 12100;
 		}
 	}
 
@@ -95,10 +95,10 @@ static int do_get_info_legacy(void __user *arg)
 			cmd.version = 12000; // ReSukiSU / SukiSU Manager
 		} else if (strstr(comm, "kow")) {
 			cmd.version = 32565; // KowSU Manager
-		} else if (strstr(comm, "weishu") || strstr(comm, "kernelsu")) {
-			cmd.version = 11874; // Official Manager
+		} else if (strstr(comm, "weishu") || strstr(comm, "kernelsu") || strstr(comm, "kernels")) {
+			cmd.version = 12100; // Official Manager v1.0+
 		} else {
-			cmd.version = 32565;
+			cmd.version = 12100;
 		}
 	}
 
