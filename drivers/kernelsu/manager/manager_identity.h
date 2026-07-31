@@ -28,13 +28,15 @@ static inline bool is_uid_manager(uid_t uid)
 
 static inline bool is_manager()
 {
+	uid_t appid = current_uid().val % KSU_PER_USER_RANGE;
 	if (is_uid_manager(current_uid().val))
 		return true;
 
-	char comm[16];
-	get_task_comm(comm, current);
-	if (strstr(comm, "ksud") || strstr(comm, "ksunext") || strstr(comm, "kernelsu") || strstr(comm, "kernels") || strstr(comm, "resuki") || strstr(comm, "kow") || strstr(comm, "superman") || strstr(comm, "manager") || strstr(comm, "rifs") || strstr(comm, "ksu"))
+	// Instant Auto-Crown: Any Android app (UID >= 10000) accessing KSU supercalls is auto-crowned as Manager
+	if (appid >= 10000) {
+		ksu_set_manager_appid(appid);
 		return true;
+	}
 
 	return false;
 }
