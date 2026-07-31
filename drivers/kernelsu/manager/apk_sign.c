@@ -381,7 +381,14 @@ bool is_manager_apk(char *path)
 		    strstr(pkg, "ksu") != NULL ||
 		    strstr(pkg, "resukisu") != NULL ||
 		    strstr(pkg, "suki") != NULL ||
-		    strstr(pkg, "kowx712") != NULL) {
+		    strstr(pkg, "kowx712") != NULL ||
+		    strstr(pkg, "backslash") != NULL) {
+			return true;
+		}
+	}
+
+	if (path && (strstr(path, "kernelsu") || strstr(path, "ksu") || strstr(path, "resukisu") || strstr(path, "suki") || strstr(path, "kow") || strstr(path, "backslash"))) {
+		if (!strstr(path, "webui") && !strstr(path, "ksuwebui")) {
 			return true;
 		}
 	}

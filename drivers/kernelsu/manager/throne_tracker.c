@@ -19,21 +19,31 @@ struct uid_data {
 static __always_inline void crown_manager(const char *apk, struct list_head *uid_data)
 {
 	char pkg[KSU_MAX_PACKAGE_NAME];
-	if (get_pkg_from_apk_path(pkg, apk) < 0) {
-		pr_err("Failed to get package name from apk path: %s\n", apk);
-		return;
+	bool found = false;
+
+	if (get_pkg_from_apk_path(pkg, apk) == 0) {
+		struct list_head *list = (struct list_head *)uid_data;
+		struct uid_data *np;
+		list_for_each_entry (np, list, list) {
+			if (strncmp(np->package, pkg, KSU_MAX_PACKAGE_NAME) == 0 ||
+			    (strstr(apk, np->package) && strlen(np->package) > 3)) {
+				pr_info("Crowning manager: %s(uid=%d)\n", np->package, np->uid);
+				ksu_set_manager_appid(np->uid);
+				found = true;
+				break;
+			}
+		}
 	}
 
-	pr_info("manager pkg: %s\n", pkg);
-
-	struct list_head *list = (struct list_head *)uid_data;
-	struct uid_data *np;
-
-	list_for_each_entry (np, list, list) {
-		if (strncmp(np->package, pkg, KSU_MAX_PACKAGE_NAME) == 0) {
-			pr_info("Crowning manager: %s(uid=%d)\n", pkg, np->uid);
-			ksu_set_manager_appid(np->uid);
-			break;
+	if (!found) {
+		struct list_head *list = (struct list_head *)uid_data;
+		struct uid_data *np;
+		list_for_each_entry (np, list, list) {
+			if (strstr(apk, np->package) && strlen(np->package) > 3) {
+				pr_info("Crowning manager via path fallback: %s(uid=%d)\n", np->package, np->uid);
+				ksu_set_manager_appid(np->uid);
+				break;
+			}
 		}
 	}
 }
