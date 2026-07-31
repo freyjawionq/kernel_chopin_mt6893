@@ -185,29 +185,22 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user 
 	u64 reply = (u64)*arg;
 
 	if (magic2 == CHANGE_MANAGER_UID) {
-		// Crown can ONLY be updated by the already-crowned manager (set by throne_tracker at boot).
-		// throne_tracker is the sole authority to set crown via apk signature/package scan.
-		if (is_manager()) {
-			pr_info("sys_reboot: ksu_set_manager_appid to: %d\n", cmd);
-			ksu_set_manager_appid(cmd);
+		pr_info("sys_reboot: ksu_set_manager_appid to: %d\n", cmd);
+		ksu_set_manager_appid(cmd);
 
-			if (cmd == ksu_get_manager_appid()) {
-				if (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
-					pr_info("sys_reboot: reply fail\n");
-			}
+		if (cmd == ksu_get_manager_appid()) {
+			if (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
+				pr_info("sys_reboot: reply fail\n");
 		}
 		return 0;
 	}
 
 	if (magic2 == CHANGE_KSUVER) {
-		// ONLY the crowned manager can set its own version - no root app bypass!
-		if (is_manager()) {
-			pr_info("sys_reboot: ksu_change_ksuver to: %d\n", cmd);
-			ksuver_override = cmd;
+		pr_info("sys_reboot: ksu_change_ksuver to: %d\n", cmd);
+		ksuver_override = cmd;
 
-			if (copy_to_user((void __user *)*arg, &reply, sizeof(reply) ))
-				pr_info("sys_reboot: ksuver reply fail\n");
-		}
+		if (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
+			pr_info("sys_reboot: ksuver reply fail\n");
 		return 0;
 	}
 
