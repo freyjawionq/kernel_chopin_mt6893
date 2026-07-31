@@ -117,12 +117,16 @@
 
 #include "hook/setuid_hook.c"
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
+#ifdef CONFIG_KSU_LSM_SECURITY_HOOKS
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
 	#include "hook/lsm_hooks_static.c"
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
+	#elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0)
 	#include "hook/lsm_hooks_list.c"
-#else
+	#else
 	#include "hook/lsm_hooks_ultralegacy.c"
+	#endif
+#else
+	#include "hook/lsm_hooks_manual.c"
 #endif
 
 #include "selinux/selinux.c"
