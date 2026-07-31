@@ -375,21 +375,22 @@ int get_pkg_from_apk_path(char *pkg, const char *path)
 
 bool is_manager_apk(char *path)
 {
-#ifdef KSU_MANAGER_PACKAGE
+	// 1. Check V2 Signatures (dummy.keystore, expected hash, KowSU)
+	if (check_v2_signature(path, 0x363, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549")
+	 || check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)
+	 || check_v2_signature(path, 0x375, "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588")) {
+		pr_info("is_manager_apk: matched signature at %s\n", path);
+		return true;
+	}
+
+	// 2. Fallback: Package name check for custom signed/rebuilt managers
 	char pkg[KSU_MAX_PACKAGE_NAME];
-	if (get_pkg_from_apk_path(pkg, path) < 0) {
-		pr_err("Failed to get package name from apk path: %s\n", path);
-		return false;
+	if (get_pkg_from_apk_path(pkg, path) == 0) {
+		if (strstr(pkg, "ksunext") || strstr(pkg, "resukisu") || strstr(pkg, "sukisu") || strstr(pkg, "kow") || strstr(pkg, "kernelsu")) {
+			pr_info("is_manager_apk: matched manager package %s at %s\n", pkg, path);
+			return true;
+		}
 	}
 
-	// pkg is `<real package>`
-	if (strncmp(pkg, KSU_MANAGER_PACKAGE, sizeof(KSU_MANAGER_PACKAGE))) {
-		return false;
-	}
-#endif
-
-	return (check_v2_signature(path, 0x363, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549") // dummy.keystore
-	|| check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)  // kernelsu official
-	|| check_v2_signature(path, 0x375, "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588")  // KOWX712/KernelSU
-	);
+	return false;
 }
