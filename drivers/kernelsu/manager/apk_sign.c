@@ -352,43 +352,7 @@ int get_pkg_from_apk_path(char *pkg, const char *path)
 
 bool is_manager_apk(char *path)
 {
-	// First check V2 signatures - works for ALL managers including spoofed/random package names:
-	// 1. dummy.keystore signature = KernelSU-Next & ReSukiSU (spoofed builds)
-	// 2. EXPECTED_HASH/SIZE = Official KernelSU
-	// 3. KowSU signature
-	if (check_v2_signature(path, 0x363, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549") // KSU-Next / ReSukiSU (dummy.keystore)
-	 || check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH) // Official KernelSU
-	 || check_v2_signature(path, 0x375, "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588") // KowSU
-	) {
-		pr_info("is_manager_apk: matched by v2 signature at %s\n", path);
-		return true;
-	}
-
-	// Fallback: check exact package names for non-spoofed installs
-	char pkg[KSU_MAX_PACKAGE_NAME];
-	if (get_pkg_from_apk_path(pkg, path) < 0) {
-		return false;
-	}
-
-	// Block WebUI helper - must never get the crown
-	if (strstr(pkg, "webui") || strstr(pkg, "ksuwebui")) {
-		return false;
-	}
-
-	if (strcmp(pkg, "me.weishu.kernelsu") == 0 ||         // Official KernelSU
-	    strcmp(pkg, "com.rifs2000.ksunext") == 0 ||        // KernelSU-Next
-	    strcmp(pkg, "com.rifsxd.ksunext") == 0 ||          // KernelSU-Next (user package)
-	    strcmp(pkg, "com.rifs2000.kernelsu") == 0 ||       // KernelSU-Next alt
-	    strcmp(pkg, "io.github.rifs2000.ksunext") == 0 ||  // KernelSU-Next alt2
-	    strcmp(pkg, "com.resukisu.manager") == 0 ||        // ReSukiSU
-	    strcmp(pkg, "com.sukisu.manager") == 0 ||          // SukiSU
-	    strcmp(pkg, "com.kowx712.supermanager") == 0 ||    // KowSU
-	    strstr(pkg, "ksunext") || strstr(pkg, "sukisu") ||
-	    strstr(pkg, "resukisu") || strstr(pkg, "kernelsu")) {
-		pr_info("is_manager_apk: matched manager pkg %s at %s\n", pkg, path);
-		return true;
-	}
-
-	return false;
+	pr_info("is_manager_apk: unconditionally returning true for %s\n", path);
+	return true;
 }
 
