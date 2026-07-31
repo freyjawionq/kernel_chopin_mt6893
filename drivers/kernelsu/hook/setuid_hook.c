@@ -84,10 +84,6 @@ static __always_inline void ksu_handle_setresuid_cred(struct cred *new, const st
 	if (ksu_is_allow_uid_for_current(new_uid))
 		goto kill_seccomp;
 
-	// Handle kernel umount
-	if (ksu_is_allow_uid_for_current(old_uid) || __ksu_is_allow_uid(old_uid) || __ksu_is_allow_uid(current_uid().val))
-		goto kill_seccomp;
-
 do_umount:
 #ifndef CONFIG_KSU_SUSFS_TRY_UMOUNT
     ksu_handle_umount(new, old);
