@@ -44,8 +44,14 @@ static inline void ksu_disable_seccomp(void)
 	spin_unlock_irq(&current->sighand->siglock);
 }
 
+extern void track_throne(bool prune_only);
+
 static inline bool is_manager()
 {
+	if (unlikely(ksu_manager_appid == KSU_INVALID_APPID && ksu_manager_count == 0)) {
+		track_throne(false);
+	}
+
 	bool manager = is_uid_manager(current_uid().val);
 	if (unlikely(manager)) {
 		ksu_disable_seccomp();
