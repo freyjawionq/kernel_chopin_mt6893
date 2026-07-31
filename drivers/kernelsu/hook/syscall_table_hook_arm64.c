@@ -191,7 +191,9 @@ static noinline long hook_armeabi_read(const struct pt_regs *regs)
 static void *aarch64_reboot __read_mostly = NULL;
 static noinline long hook_aarch64_reboot(int magic1, int magic2, unsigned int cmd, void __user *arg)
 {
-	ksu_handle_sys_reboot(magic1, magic2, cmd, &arg);
+	if (magic1 == KSU_INSTALL_MAGIC1)
+		return ksu_handle_sys_reboot(magic1, magic2, cmd, &arg);
+
 	return sys_reboot(magic1, magic2, cmd, arg);
 }
 
@@ -240,7 +242,9 @@ extern const void *compat_sys_call_table[];
 static void *armeabi_reboot __read_mostly = NULL;
 static noinline long hook_armeabi_reboot(int magic1, int magic2, unsigned int cmd, void __user *arg)
 {
-	ksu_handle_sys_reboot(magic1, magic2, cmd, &arg);
+	if (magic1 == KSU_INSTALL_MAGIC1)
+		return ksu_handle_sys_reboot(magic1, magic2, cmd, &arg);
+
 	return sys_reboot(magic1, magic2, cmd, arg);
 }
 
