@@ -85,17 +85,15 @@ static __always_inline void ksu_handle_setresuid_cred(struct cred *new, const st
 		goto kill_seccomp;
 
 	// Handle kernel umount
+	if (ksu_is_allow_uid_for_current(old_uid) || __ksu_is_allow_uid(old_uid) || __ksu_is_allow_uid(current_uid().val))
+		goto kill_seccomp;
+
 do_umount:
-    // Handle kernel umount
 #ifndef CONFIG_KSU_SUSFS_TRY_UMOUNT
     ksu_handle_umount(new, old);
 #else
     susfs_try_umount(new_uid);
-#endif // #ifndef CONFIG_KSU_SUSFS_TRY_UMOUNT
-
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-    //susfs_run_sus_path_loop(new_uid);
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_PATH
+#endif
 
 #ifdef CONFIG_KSU_SUSFS
     ksu_handle_extra_susfs_work();
@@ -103,7 +101,7 @@ do_umount:
     susfs_set_current_proc_umounted();
 
     return;
-#endif // #ifdef CONFIG_KSU_SUSFS
+#endif
 	return;
 
 install_ksu_fd:
@@ -113,4 +111,9 @@ install_ksu_fd:
 kill_seccomp:
 	disable_seccomp();
 	return;
+}
+
+int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
+{
+	return 0;
 }
