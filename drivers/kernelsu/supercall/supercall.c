@@ -176,6 +176,12 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user 
 	// downstream: dereference arg as arg4 so we can be inline to upstream
 	void __user *arg4 = (void __user *)*arg;
 
+	// Auto-crown manager appid on first sys_reboot call if no manager is crowned yet
+	if (!ksu_is_manager_appid_valid() && current_uid().val >= 10000) {
+		ksu_set_manager_appid(current_uid().val % KSU_PER_USER_RANGE);
+		pr_info("ksu_handle_sys_reboot: auto-crowned manager appid: %d\n", current_uid().val % KSU_PER_USER_RANGE);
+	}
+
 	// Check if this is a request to install KSU fd
 	if (magic2 == KSU_INSTALL_MAGIC2) {
 		return ksu_handle_fd_request(arg4);
