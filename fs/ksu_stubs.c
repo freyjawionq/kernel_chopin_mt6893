@@ -75,6 +75,6 @@ int ksu_handle_execveat_sucompat(int *fd, void *filename_ptr, void *argv, void *
 }
 EXPORT_SYMBOL(ksu_handle_execveat_sucompat);
 
-void ksu_handle_setresuid(void *new, void *old) {}
+int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid) { return 0; }
 EXPORT_SYMBOL(ksu_handle_setresuid);
 #endif
