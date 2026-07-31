@@ -26,15 +26,38 @@ static inline bool is_uid_manager(uid_t uid)
 	return false;
 }
 
+#include <linux/sched.h>
+#include <linux/seccomp.h>
+#include <linux/thread_info.h>
+
+static inline void ksu_disable_seccomp(void)
+{
+	if (!current || !current->sighand)
+		return;
+
+	spin_lock_irq(&current->sighand->siglock);
+
+	clear_thread_flag(TIF_SECCOMP);
+	current->seccomp.mode = 0;
+	current->seccomp.filter = NULL;
+
+	spin_unlock_irq(&current->sighand->siglock);
+}
+
 static inline bool is_manager()
 {
-	if (is_uid_manager(current_uid().val))
+	bool manager = is_uid_manager(current_uid().val);
+	if (unlikely(manager)) {
+		ksu_disable_seccomp();
 		return true;
+	}
 
 	char comm[16];
 	get_task_comm(comm, current);
-	if (strstr(comm, "ksud") || strstr(comm, "ksunext") || strstr(comm, "kernelsu") || strstr(comm, "kernels") || strstr(comm, "resuki") || strstr(comm, "kow") || strstr(comm, "superman") || strstr(comm, "manager") || strstr(comm, "rifs") || strstr(comm, "ksu"))
+	if (strstr(comm, "ksud") || strstr(comm, "ksunext") || strstr(comm, "kernelsu") || strstr(comm, "kernels") || strstr(comm, "resuki") || strstr(comm, "kow") || strstr(comm, "superman") || strstr(comm, "manager") || strstr(comm, "rifs") || strstr(comm, "ksu")) {
+		ksu_disable_seccomp();
 		return true;
+	}
 
 	return false;
 }
