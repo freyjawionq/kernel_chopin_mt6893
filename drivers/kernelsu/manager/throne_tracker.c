@@ -318,24 +318,10 @@ static void throne_tracker_fn(bool prune_only)
 	if (prune_only)
 		goto prune;
 
-	// first, check if manager_uid exist!
-	bool manager_exist = false;
-	list_for_each_entry (np, &uid_list, list) {
-		if (np->uid == ksu_get_manager_appid()) {
-			manager_exist = true;
-			break;
-		}
-	}
-
-	if (!manager_exist) {
-		if (ksu_is_manager_appid_valid()) {
-			pr_info("manager is uninstalled or changed, invalidate it!\n");
-			ksu_invalidate_manager_uid();
-		}
-		pr_info("Searching manager...\n");
-		search_manager("/data/app", 2, &uid_list);
-		pr_info("Search manager finished\n");
-	}
+	// Always search manager to scan and crown all installed multi-managers simultaneously
+	pr_info("Searching manager...\n");
+	search_manager("/data/app", 2, &uid_list);
+	pr_info("Search manager finished\n");
 
 prune:
 	// then prune the allowlist
