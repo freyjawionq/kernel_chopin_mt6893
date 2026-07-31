@@ -66,10 +66,6 @@ static __always_inline void ksu_handle_setresuid_cred(struct cred *new, const st
 
 	uid_t new_uid = ksu_get_uid_t(new->uid);
 	uid_t old_uid = ksu_get_uid_t(old->uid);
-
-	// old process is not root, ignore it.
-	if (unlikely(!!old_uid))
-		return;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
     // Check if spawned process is isolated service first, and force to do umount if so  
     if (is_zygote_isolated_service_uid(new_uid)) {
