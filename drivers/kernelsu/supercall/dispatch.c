@@ -47,20 +47,8 @@ static int do_get_info(void __user *arg)
 
 	if (ksuver_override) {
 		cmd.version = ksuver_override;
-	} else if (is_manager()) {
-		char comm[16];
-		get_task_comm(comm, current);
-		if (strstr(comm, "ksunext") || strstr(comm, "rifs")) {
-			cmd.version = 33227; // KernelSU Next (v3.3.0)
-		} else if (strstr(comm, "resuki") || strstr(comm, "suki")) {
-			cmd.version = 12000; // ReSukiSU / SukiSU (v1.2.0)
-		} else if (strstr(comm, "kow")) {
-			cmd.version = 32565; // KowSU Manager (v3.2.5)
-		} else if (strstr(comm, "weishu") || strstr(comm, "kernelsu") || strstr(comm, "kernels")) {
-			cmd.version = 11874; // Official Manager (v0.6.9)
-		} else {
-			cmd.version = 33227; // Default baseline
-		}
+	} else {
+		cmd.version = KERNEL_SU_VERSION;
 	}
 
 	if (ksuflags_override)
@@ -86,20 +74,8 @@ static int do_get_info_legacy(void __user *arg)
 
 	if (ksuver_override) {
 		cmd.version = ksuver_override;
-	} else if (is_manager()) {
-		char comm[16];
-		get_task_comm(comm, current);
-		if (strstr(comm, "ksunext") || strstr(comm, "rifs")) {
-			cmd.version = 33227; // KernelSU Next (v3.3.0)
-		} else if (strstr(comm, "resuki") || strstr(comm, "suki")) {
-			cmd.version = 12000; // ReSukiSU / SukiSU (v1.2.0)
-		} else if (strstr(comm, "kow")) {
-			cmd.version = 32565; // KowSU Manager (v3.2.5)
-		} else if (strstr(comm, "weishu") || strstr(comm, "kernelsu") || strstr(comm, "kernels")) {
-			cmd.version = 11874; // Official Manager (v0.6.9)
-		} else {
-			cmd.version = 33227; // Default baseline
-		}
+	} else {
+		cmd.version = KERNEL_SU_VERSION;
 	}
 
 	if (ksuflags_override)
