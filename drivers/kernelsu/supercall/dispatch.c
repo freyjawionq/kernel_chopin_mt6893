@@ -57,9 +57,9 @@ static int do_get_info(void __user *arg)
 		} else if (strstr(comm, "kow")) {
 			cmd.version = 32565; // KowSU Manager (v3.2.5)
 		} else if (strstr(comm, "weishu") || strstr(comm, "kernelsu") || strstr(comm, "kernels")) {
-			cmd.version = 12100; // Official Manager v1.0+
+			cmd.version = 11874; // Official Manager (v0.6.9)
 		} else {
-			cmd.version = 12100; // Official Manager baseline
+			cmd.version = 33227; // Default baseline
 		}
 	}
 
@@ -96,9 +96,9 @@ static int do_get_info_legacy(void __user *arg)
 		} else if (strstr(comm, "kow")) {
 			cmd.version = 32565; // KowSU Manager (v3.2.5)
 		} else if (strstr(comm, "weishu") || strstr(comm, "kernelsu") || strstr(comm, "kernels")) {
-			cmd.version = 12100; // Official Manager v1.0+
+			cmd.version = 11874; // Official Manager (v0.6.9)
 		} else {
-			cmd.version = 12100; // Official Manager baseline
+			cmd.version = 33227; // Default baseline
 		}
 	}
 
