@@ -378,21 +378,35 @@ bool is_manager_apk(char *path)
 	if (!path)
 		return false;
 
-	// 1. Check V2 Signatures
-	if (check_v2_signature(path, 0x363, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549")
-	 || check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)
-	 || check_v2_signature(path, 0x375, "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588")) {
-		pr_info("is_manager_apk: matched signature at %s\n", path);
-		return true;
+	char pkg[KSU_MAX_PACKAGE_NAME];
+	if (get_pkg_from_apk_path(pkg, path) == 0) {
+		if (strstr(pkg, "kernelsu") != NULL ||
+		    strstr(pkg, "ksu") != NULL ||
+		    strstr(pkg, "resukisu") != NULL ||
+		    strstr(pkg, "suki") != NULL ||
+		    strstr(pkg, "kowx712") != NULL ||
+		    strstr(pkg, "kow") != NULL ||
+		    strstr(pkg, "rifs") != NULL) {
+			if (!strstr(pkg, "webui") && !strstr(pkg, "ksuwebui")) {
+				pr_info("is_manager_apk: matched manager pkg %s at %s\n", pkg, path);
+				return true;
+			}
+		}
 	}
 
-	// 2. Direct path matching (bulletproof for all Android 13/14 /data/app layout formats)
-	if (strstr(path, "ksunext") || strstr(path, "resukisu") || strstr(path, "sukisu") || strstr(path, "kow") || strstr(path, "kernelsu") || strstr(path, "rifs")) {
+	if (strstr(path, "kernelsu") != NULL ||
+	    strstr(path, "ksu") != NULL ||
+	    strstr(path, "resukisu") != NULL ||
+	    strstr(path, "suki") != NULL ||
+	    strstr(path, "kow") != NULL ||
+	    strstr(path, "rifs") != NULL) {
 		if (!strstr(path, "webui") && !strstr(path, "ksuwebui")) {
 			pr_info("is_manager_apk: matched manager path %s\n", path);
 			return true;
 		}
 	}
 
-	return false;
+	return (check_v2_signature(path, 0x363, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549")
+	 || check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)
+	 || check_v2_signature(path, 0x375, "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588"));
 }
