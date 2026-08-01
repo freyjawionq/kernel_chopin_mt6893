@@ -1,13 +1,4 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
-/* x_tables module for matching the IPv4/IPv6 DSCP field
- *
- * (C) 2002 Harald Welte <laforge@gnumonks.org>
- * This software is distributed under GNU GPL v2, 1991
- *
- * See RFC2474 for a description of the DSCP field within the IP Header.
- *
- * xt_dscp.h,v 1.3 2002/08/05 19:00:21 laforge Exp
-*/
 #ifndef _XT_DSCP_H
 #define _XT_DSCP_H
 
@@ -27,6 +18,16 @@ struct xt_tos_match_info {
 	__u8 tos_mask;
 	__u8 tos_value;
 	__u8 invert;
+};
+
+/* target info */
+struct xt_DSCP_info {
+	__u8 dscp;
+};
+
+struct xt_tos_target_info {
+	__u8 tos_value;
+	__u8 tos_mask;
 };
 
 #endif /* _XT_DSCP_H */
