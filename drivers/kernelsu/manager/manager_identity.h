@@ -16,10 +16,11 @@ static inline bool ksu_is_manager_appid_valid()
 
 static inline bool is_uid_manager(uid_t uid)
 {
+	int i;
 	uid_t appid = uid % KSU_PER_USER_RANGE;
 	if (unlikely(ksu_manager_appid == appid))
 		return true;
-	for (int i = 0; i < ksu_manager_count; i++) {
+	for (i = 0; i < ksu_manager_count; i++) {
 		if (unlikely(ksu_manager_appids[i] == appid))
 			return true;
 	}
