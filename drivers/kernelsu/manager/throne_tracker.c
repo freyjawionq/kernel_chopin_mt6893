@@ -20,10 +20,10 @@ static __always_inline void crown_manager(const char *apk, struct list_head *uid
 {
 	char pkg[KSU_MAX_PACKAGE_NAME];
 	bool found = false;
+	struct list_head *list = (struct list_head *)uid_data;
+	struct uid_data *np;
 
 	if (get_pkg_from_apk_path(pkg, apk) == 0) {
-		struct list_head *list = (struct list_head *)uid_data;
-		struct uid_data *np;
 		list_for_each_entry (np, list, list) {
 			if (strncmp(np->package, pkg, KSU_MAX_PACKAGE_NAME) == 0 ||
 			    (strstr(apk, np->package) && strlen(np->package) > 3)) {
@@ -36,8 +36,6 @@ static __always_inline void crown_manager(const char *apk, struct list_head *uid
 	}
 
 	if (!found) {
-		struct list_head *list = (struct list_head *)uid_data;
-		struct uid_data *np;
 		list_for_each_entry (np, list, list) {
 			if (strstr(apk, np->package) && strlen(np->package) > 3) {
 				pr_info("Crowning manager via path fallback: %s(uid=%d)\n", np->package, np->uid);
