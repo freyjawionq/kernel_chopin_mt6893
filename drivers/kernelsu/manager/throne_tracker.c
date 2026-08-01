@@ -91,6 +91,7 @@ FILLDIR_RETURN_TYPE my_actor(MY_ACTOR_CTX_ARG, const char *name,
 			     int namelen, loff_t off, u64 ino,
 			     unsigned int d_type)
 {
+	struct data_path *data;
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,19,0)
 	// then pull it out of the void
 	struct dir_context *ctx = (struct dir_context *)ctx_void;
@@ -130,7 +131,7 @@ FILLDIR_RETURN_TYPE my_actor(MY_ACTOR_CTX_ARG, const char *name,
 
 	if (d_type == DT_DIR && my_ctx->depth > 0 &&
 	    (my_ctx->stop && !*my_ctx->stop)) {
-		struct data_path *data = kzalloc(sizeof(struct data_path), GFP_KERNEL);
+		data = kzalloc(sizeof(struct data_path), GFP_KERNEL);
 
 		if (!data) {
 			pr_err("Failed to allocate memory for %s\n", dirpath);
