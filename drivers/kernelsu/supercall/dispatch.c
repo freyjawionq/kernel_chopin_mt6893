@@ -37,10 +37,6 @@ static inline void get_process_name(char *buf, size_t buflen)
 {
 	buf[0] = '\0';
 	if (current) {
-		get_cmdline(current, buf, (int)buflen - 1);
-		buf[buflen - 1] = '\0';
-	}
-	if (buf[0] == '\0') {
 		get_task_comm(buf, current);
 	}
 }
