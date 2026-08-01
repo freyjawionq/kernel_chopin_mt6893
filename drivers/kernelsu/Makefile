@@ -11,8 +11,8 @@ MDIR := $(realpath $(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 $(info -- KDIR: $(KDIR))
 $(info -- MDIR: $(MDIR))
 
-# driver version matches backslashxx KernelSU baseline (v3.2.5 = 32565)
-CFLAGS_ksu.o += -DKSU_VERSION=32565
+# driver version matches Official KernelSU v1.0.5 baseline (11999)
+CFLAGS_ksu.o += -DKSU_VERSION=11999
 CFLAGS_ksu.o += -DKSU_COMPAT_USE_SELINUX_STATE=1
 CFLAGS_ksu.o += -Wno-error -Wno-strict-prototypes -Wno-old-style-definition -Wno-incompatible-pointer-types
 

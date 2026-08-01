@@ -51,11 +51,11 @@ static int do_get_info(void __user *arg)
 	} else if (strstr(comm, "ksunext") || strstr(comm, "rifs")) {
 		cmd.version = 33227; // KernelSU Next (v3.3.0)
 	} else if (strstr(comm, "resuki") || strstr(comm, "suki")) {
-		cmd.version = 12000; // ReSukiSU driver version 12000
+		cmd.version = 12000; // ReSukiSU (12000)
 	} else if (strstr(comm, "kow")) {
-		cmd.version = 32565; // KowSU baseline
+		cmd.version = 11999; // KowSU (v1.0.5 = 11999)
 	} else {
-		cmd.version = KERNEL_SU_VERSION; // Official Manager baseline (KERNEL_SU_VERSION)
+		cmd.version = 11999; // Official Manager (v1.0.5 = 11999)
 	}
 
 	if (ksuflags_override)
@@ -85,11 +85,11 @@ static int do_get_info_legacy(void __user *arg)
 	} else if (strstr(comm, "ksunext") || strstr(comm, "rifs")) {
 		cmd.version = 33227; // KernelSU Next (v3.3.0)
 	} else if (strstr(comm, "resuki") || strstr(comm, "suki")) {
-		cmd.version = 12000; // ReSukiSU driver version 12000
+		cmd.version = 12000; // ReSukiSU (12000)
 	} else if (strstr(comm, "kow")) {
-		cmd.version = 32565; // KowSU baseline
+		cmd.version = 11999; // KowSU (v1.0.5 = 11999)
 	} else {
-		cmd.version = KERNEL_SU_VERSION; // Official Manager baseline (KERNEL_SU_VERSION)
+		cmd.version = 11999; // Official Manager (v1.0.5 = 11999)
 	}
 
 	if (ksuflags_override)
