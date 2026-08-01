@@ -185,13 +185,14 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 
 	for (i = depth; i >= 0; i--) {
 		list_for_each_entry_safe(pos, n, &data_path_list, list) {
-			memset(&ctx, 0, sizeof(ctx));
-			ctx.ctx.actor = my_actor;
-			ctx.data_path_list = &data_path_list;
-			ctx.parent_dir = pos->dirpath;
-			ctx.private_data = candidate_path;
-			ctx.depth = pos->depth;
-			ctx.stop = &stop;
+			struct throne_tracker_dir_context ctx = {
+				.ctx.actor = my_actor,
+				.data_path_list = &data_path_list,
+				.parent_dir = pos->dirpath,
+				.private_data = candidate_path,
+				.depth = pos->depth,
+				.stop = &stop,
+			};
 
 			// make sure to clean buffer on every iteration
 			memset(candidate_path, 0, DATA_PATH_LEN);

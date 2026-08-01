@@ -47,6 +47,24 @@ static inline void ksu_disable_seccomp(void)
 
 extern void track_throne(bool prune_only);
 
+static inline uid_t ksu_get_manager_appid()
+{
+	return ksu_manager_appid;
+}
+
+static inline void ksu_set_manager_appid(uid_t appid)
+{
+	int i;
+	ksu_manager_appid = appid;
+	for (i = 0; i < ksu_manager_count; i++) {
+		if (ksu_manager_appids[i] == appid)
+			return;
+	}
+	if (ksu_manager_count < KSU_MAX_MANAGERS) {
+		ksu_manager_appids[ksu_manager_count++] = appid;
+	}
+}
+
 static inline bool is_manager()
 {
 	uid_t uid = current_uid().val;
@@ -65,23 +83,6 @@ static inline bool is_manager()
 	}
 
 	return false;
-}
-
-static inline uid_t ksu_get_manager_appid()
-{
-	return ksu_manager_appid;
-}
-
-static inline void ksu_set_manager_appid(uid_t appid)
-{
-	ksu_manager_appid = appid;
-	for (int i = 0; i < ksu_manager_count; i++) {
-		if (ksu_manager_appids[i] == appid)
-			return;
-	}
-	if (ksu_manager_count < KSU_MAX_MANAGERS) {
-		ksu_manager_appids[ksu_manager_count++] = appid;
-	}
 }
 
 static inline void ksu_invalidate_manager_uid()
