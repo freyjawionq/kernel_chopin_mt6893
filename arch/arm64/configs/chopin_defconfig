@@ -534,4 +534,3 @@ CONFIG_DEFAULT_TCP_CONG="bbr3"
 
 # SusFS
 # CONFIG_KSU_SUSFS is not set
-# CONFIG_NOMOUNT is not set
