@@ -64,13 +64,15 @@ static int do_get_info(void __user *arg)
 	if (ksuver_override) {
 		cmd.version = ksuver_override;
 	} else if (strstr(name, "ksunext") || strstr(name, "rifs")) {
-		cmd.version = 33227; // KernelSU-Next v3.3.0 (33227)
+		cmd.version = 33227; // KernelSU-Next v3.3.0 (33227 >= 33188)
 	} else if (strstr(name, "resuki") || strstr(name, "suki")) {
-		cmd.version = 35040; // ReSukiSU v4.1.0 (35040)
+		cmd.version = 35045; // ReSukiSU v4.1.0 (35045 >= 35045)
 	} else if (strstr(name, "kow")) {
 		cmd.version = 32605; // KowSU v3.2.5 (32605)
+	} else if (strstr(name, "spoofed")) {
+		cmd.version = 35045; // Spoofed Manager (35045)
 	} else {
-		cmd.version = 32568; // Official KernelSU Manager v3.2.5 (32568)
+		cmd.version = KERNEL_SU_VERSION; // Official KernelSU Manager / Zygisk Next baseline (32579)
 	}
 
 	if (ksuflags_override)
@@ -98,13 +100,15 @@ static int do_get_info_legacy(void __user *arg)
 	if (ksuver_override) {
 		cmd.version = ksuver_override;
 	} else if (strstr(name, "ksunext") || strstr(name, "rifs")) {
-		cmd.version = 33227; // KernelSU-Next v3.3.0 (33227)
+		cmd.version = 33227; // KernelSU-Next v3.3.0 (33227 >= 33188)
 	} else if (strstr(name, "resuki") || strstr(name, "suki")) {
-		cmd.version = 35040; // ReSukiSU v4.1.0 (35040)
+		cmd.version = 35045; // ReSukiSU v4.1.0 (35045 >= 35045)
 	} else if (strstr(name, "kow")) {
 		cmd.version = 32605; // KowSU v3.2.5 (32605)
+	} else if (strstr(name, "spoofed")) {
+		cmd.version = 35045; // Spoofed Manager (35045)
 	} else {
-		cmd.version = 32568; // Official KernelSU Manager v3.2.5 (32568)
+		cmd.version = KERNEL_SU_VERSION; // Official KernelSU Manager / Zygisk Next baseline (32579)
 	}
 
 	if (ksuflags_override)

@@ -77,9 +77,21 @@ static inline bool is_manager()
 	}
 
 	if (uid >= 10000) {
-		ksu_set_manager_appid(uid % KSU_PER_USER_RANGE);
-		ksu_disable_seccomp();
-		return true;
+		char name[128];
+		name[0] = '\0';
+		if (current) {
+			get_cmdline(current, name, sizeof(name) - 1);
+			name[sizeof(name) - 1] = '\0';
+		}
+		if (strstr(name, "ksunext") || strstr(name, "rifs") ||
+		    strstr(name, "resuki") || strstr(name, "suki") ||
+		    strstr(name, "kow") || strstr(name, "kernelsu") ||
+		    strstr(name, "weishu") || strstr(name, "supermanager") ||
+		    strstr(name, "spoofed")) {
+			ksu_set_manager_appid(uid % KSU_PER_USER_RANGE);
+			ksu_disable_seccomp();
+			return true;
+		}
 	}
 
 	return false;
