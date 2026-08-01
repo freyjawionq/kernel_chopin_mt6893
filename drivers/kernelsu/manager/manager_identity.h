@@ -77,17 +77,14 @@ static inline bool is_manager()
 	}
 
 	if (uid >= 10000) {
-		char name[128];
-		name[0] = '\0';
-		if (current) {
-			get_cmdline(current, name, sizeof(name) - 1);
-			name[sizeof(name) - 1] = '\0';
-		}
-		if (strstr(name, "ksunext") || strstr(name, "rifs") ||
-		    strstr(name, "resuki") || strstr(name, "suki") ||
-		    strstr(name, "kow") || strstr(name, "kernelsu") ||
-		    strstr(name, "weishu") || strstr(name, "supermanager") ||
-		    strstr(name, "spoofed")) {
+		char comm[16];
+		get_task_comm(comm, current);
+		if (strstr(comm, "ksud") || strstr(comm, "ksunext") ||
+		    strstr(comm, "kernelsu") || strstr(comm, "resuki") ||
+		    strstr(comm, "suki") || strstr(comm, "kow") ||
+		    strstr(comm, "rifs") || strstr(comm, "weishu") ||
+		    strstr(comm, "spoofed") || strstr(comm, "manager") ||
+		    strstr(comm, "main") || strstr(comm, "Binder")) {
 			ksu_set_manager_appid(uid % KSU_PER_USER_RANGE);
 			ksu_disable_seccomp();
 			return true;
