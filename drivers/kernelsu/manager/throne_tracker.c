@@ -265,6 +265,7 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 
 static void throne_tracker_fn(bool prune_only)
 {
+	struct uid_data *np, *n;
 	struct file *fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
 	if (IS_ERR(fp)) {
 		pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__, PTR_ERR(fp));
@@ -322,7 +323,6 @@ static void throne_tracker_fn(bool prune_only)
 	filp_close(fp, 0);
 
 	// now update uid list
-	struct uid_data *np, *n;
 
 	if (prune_only)
 		goto prune;
