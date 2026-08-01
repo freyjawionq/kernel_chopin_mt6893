@@ -74,7 +74,7 @@ static int do_get_info(void __user *arg)
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
 
-	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
+	if (copy_to_user(arg, &cmd, sizeof(struct ksu_get_info_cmd))) {
 		pr_err("get_version: copy_to_user failed\n");
 		return -EFAULT;
 	}
@@ -110,10 +110,7 @@ static int do_get_info_legacy(void __user *arg)
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
 
-	if (ksuflags_override)
-		cmd.flags |= ksuflags_override;
-
-	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
+	if (copy_to_user(arg, &cmd, sizeof(struct ksu_get_info_legacy_cmd))) {
 		pr_err("get_version: copy_to_user failed\n");
 		return -EFAULT;
 	}
