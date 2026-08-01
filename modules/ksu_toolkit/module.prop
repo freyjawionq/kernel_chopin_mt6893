@@ -1,6 +1,0 @@
-id=ksu_toolkit
-name=KernelSU Toolkit
-version=latest
-versionCode=486
-author=xx, KOWX712
-description=Small extensions on top of KernelSU v3. Mostly for debugging purposes.
