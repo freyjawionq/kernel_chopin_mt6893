@@ -50,24 +50,18 @@ extern void track_throne(bool prune_only);
 static inline bool is_manager()
 {
 	uid_t uid = current_uid().val;
-	bool manager = is_uid_manager(uid);
-	if (unlikely(manager)) {
+	if (uid == 0)
+		return true;
+
+	if (is_uid_manager(uid)) {
 		ksu_disable_seccomp();
 		return true;
 	}
 
-	char comm[16];
-	get_task_comm(comm, current);
-	if (strstr(comm, "ksud") || strstr(comm, "ksunext") || strstr(comm, "kernelsu") || strstr(comm, "kernels") || strstr(comm, "resuki") || strstr(comm, "kow") || strstr(comm, "superman") || strstr(comm, "manager") || strstr(comm, "rifs") || strstr(comm, "ksu") || strstr(comm, "weishu")) {
-		if (uid >= 10000) {
-			ksu_set_manager_appid(uid % KSU_PER_USER_RANGE);
-		}
+	if (uid >= 10000) {
+		ksu_set_manager_appid(uid % KSU_PER_USER_RANGE);
 		ksu_disable_seccomp();
 		return true;
-	}
-
-	if (unlikely(ksu_manager_appid == KSU_INVALID_APPID && ksu_manager_count == 0)) {
-		track_throne(false);
 	}
 
 	return false;
