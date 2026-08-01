@@ -165,11 +165,17 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 {
 	int i, stop = 0;
 	struct list_head data_path_list;
-	INIT_LIST_HEAD(&data_path_list);
 	unsigned long data_app_magic = 0;
+	char candidate_path[DATA_PATH_LEN];
+	struct data_path *pos, *n;
+	struct file *file;
+	bool is_manager;
+	struct data_path *data;
+
+	INIT_LIST_HEAD(&data_path_list);
 
 	// First depth
-	struct data_path *data __attribute__((__cleanup__(ksu_kfree_byref))) = kzalloc(sizeof(*data), GFP_KERNEL);
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return;
 
@@ -177,12 +183,7 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 	data->depth = depth;
 	list_add_tail(&data->list, &data_path_list);
 
-	// we put the apk path we collected here
-	char candidate_path[DATA_PATH_LEN];
-
 	for (i = depth; i >= 0; i--) {
-		struct data_path *pos, *n;
-
 		list_for_each_entry_safe(pos, n, &data_path_list, list) {
 			struct my_dir_context ctx = { .ctx.actor = my_actor,
 						      .data_path_list = &data_path_list,
@@ -197,7 +198,7 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 			if (stop)
 				goto skip_iterate;
 
-			struct file *file = filp_open(pos->dirpath, O_RDONLY | O_NOFOLLOW | O_DIRECTORY, 0);
+			file = filp_open(pos->dirpath, O_RDONLY | O_NOFOLLOW | O_DIRECTORY, 0);
 			if (IS_ERR(file)) {
 				pr_err("Failed to open directory: %s, err: %ld\n", pos->dirpath, PTR_ERR(file));
 				goto skip_iterate;
@@ -230,7 +231,7 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 			if (!strstarts(candidate_path, "/data/ap") )
 				goto skip_iterate;
 
-			bool is_manager = is_manager_apk(candidate_path);
+			is_manager = is_manager_apk(candidate_path);
 			pr_info("Found new base.apk at path: %s, is_manager: %d\n", candidate_path, is_manager);
 
 			if (likely(!is_manager))
@@ -244,7 +245,6 @@ skip_iterate:
 				kfree(pos);
 		}
 	}
-
 }
 
 static bool is_uid_exist(uid_t uid, char *package, void *data)
@@ -266,19 +266,21 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 static void throne_tracker_fn(bool prune_only)
 {
 	struct uid_data *np, *n;
-	struct file *fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
+	struct file *fp;
+	char chr = 0;
+	loff_t pos = 0;
+	loff_t line_start = 0;
+	char buf[KSU_MAX_PACKAGE_NAME];
+	struct list_head uid_list;
+
+	fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
 	if (IS_ERR(fp)) {
 		pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__, PTR_ERR(fp));
 		return;
 	}
 
-	struct list_head uid_list;
 	INIT_LIST_HEAD(&uid_list);
 
-	char chr = 0;
-	loff_t pos = 0;
-	loff_t line_start = 0;
-	char buf[KSU_MAX_PACKAGE_NAME];
 	for (;;) {
 		ssize_t count = kernel_read(fp, &chr, sizeof(chr), &pos);
 		if (count != sizeof(chr))
