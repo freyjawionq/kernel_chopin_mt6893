@@ -1,7 +1,7 @@
 #ifndef CONFIG_KSU_SUSFS
-static bool ksu_kernel_umount_enabled __read_mostly = false;
+static bool ksu_kernel_umount_enabled __read_mostly = true;
 #else
-bool ksu_kernel_umount_enabled = false;
+bool ksu_kernel_umount_enabled = true;
 #endif // #ifndef CONFIG_KSU_SUSFS
 
 static int kernel_umount_feature_get(u64 *value)
