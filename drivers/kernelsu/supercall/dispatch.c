@@ -30,22 +30,10 @@ static int do_grant_root(void __user *arg)
 	return ret;
 }
 
-uint32_t ksuver_override = 0;
-uint32_t ksuflags_override = 0;
-
-static inline void get_task_cmdline(char *buf, size_t buflen)
-{
-	buf[0] = '\0';
-	if (current) {
-		get_cmdline(current, buf, (int)buflen - 1);
-		buf[buflen - 1] = '\0';
-	}
-}
-
 static int do_get_info(void __user *arg)
 {
 	struct ksu_get_info_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
-	char cmdline[128];
+	char comm[16];
 
 #ifdef MODULE
 	cmd.flags |= KSU_GET_INFO_FLAG_LKM;
@@ -56,18 +44,18 @@ static int do_get_info(void __user *arg)
 	cmd.features = KSU_FEATURE_MAX;
 	cmd.uapi_version = KERNEL_SU_UAPI_VERSION;
 
-	get_task_cmdline(cmdline, sizeof(cmdline));
+	get_task_comm(comm, current);
 
 	if (ksuver_override) {
 		cmd.version = ksuver_override;
-	} else if (strstr(cmdline, "ksunext") || strstr(cmdline, "rifs")) {
+	} else if (strstr(comm, "ksunext") || strstr(comm, "rifs")) {
 		cmd.version = 33227; // KernelSU Next (v3.3.0)
-	} else if (strstr(cmdline, "resuki") || strstr(cmdline, "suki")) {
+	} else if (strstr(comm, "resuki") || strstr(comm, "suki")) {
 		cmd.version = 12000; // ReSukiSU driver version 12000
-	} else if (strstr(cmdline, "kow")) {
+	} else if (strstr(comm, "kow")) {
 		cmd.version = 32565; // KowSU baseline
 	} else {
-		cmd.version = KERNEL_SU_VERSION; // Official Manager baseline (12000 / 32565)
+		cmd.version = KERNEL_SU_VERSION; // Official Manager baseline (KERNEL_SU_VERSION)
 	}
 
 	if (ksuflags_override)
@@ -84,24 +72,24 @@ static int do_get_info(void __user *arg)
 static int do_get_info_legacy(void __user *arg)
 {
 	struct ksu_get_info_legacy_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
-	char cmdline[128];
+	char comm[16];
 
 	cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
 	cmd.flags |= (1 << 3); // KSU_GET_INFO_FLAG_LEGACY (backslashxx non-GKI driver flag)
 	cmd.features = KSU_FEATURE_MAX;
 
-	get_task_cmdline(cmdline, sizeof(cmdline));
+	get_task_comm(comm, current);
 
 	if (ksuver_override) {
 		cmd.version = ksuver_override;
-	} else if (strstr(cmdline, "ksunext") || strstr(cmdline, "rifs")) {
+	} else if (strstr(comm, "ksunext") || strstr(comm, "rifs")) {
 		cmd.version = 33227; // KernelSU Next (v3.3.0)
-	} else if (strstr(cmdline, "resuki") || strstr(cmdline, "suki")) {
+	} else if (strstr(comm, "resuki") || strstr(comm, "suki")) {
 		cmd.version = 12000; // ReSukiSU driver version 12000
-	} else if (strstr(cmdline, "kow")) {
+	} else if (strstr(comm, "kow")) {
 		cmd.version = 32565; // KowSU baseline
 	} else {
-		cmd.version = KERNEL_SU_VERSION; // Official Manager baseline (12000 / 32565)
+		cmd.version = KERNEL_SU_VERSION; // Official Manager baseline (KERNEL_SU_VERSION)
 	}
 
 	if (ksuflags_override)
