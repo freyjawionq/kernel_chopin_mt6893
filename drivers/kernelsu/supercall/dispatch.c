@@ -33,17 +33,9 @@ uint32_t ksuflags_override = 0;
 static inline void get_task_cmdline(char *buf, size_t buflen)
 {
 	buf[0] = '\0';
-	if (current && current->mm) {
-		unsigned long arg_start = current->mm->arg_start;
-		unsigned long arg_end = current->mm->arg_end;
-		size_t len = arg_end > arg_start ? (arg_end - arg_start) : 0;
-		if (len > 0) {
-			if (len >= buflen)
-				len = buflen - 1;
-			if (copy_from_user(buf, (void __user *)arg_start, len) == 0) {
-				buf[len] = '\0';
-			}
-		}
+	if (current) {
+		get_cmdline(current, buf, (int)buflen - 1);
+		buf[buflen - 1] = '\0';
 	}
 }
 
