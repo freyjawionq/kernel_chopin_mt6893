@@ -265,13 +265,15 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 
 static void throne_tracker_fn(bool prune_only)
 {
-	struct uid_data *np, *n;
+	struct uid_data *np, *n, *data;
 	struct file *fp;
 	char chr = 0;
 	loff_t pos = 0;
 	loff_t line_start = 0;
 	char buf[KSU_MAX_PACKAGE_NAME];
 	struct list_head uid_list;
+	char *tmp, *package, *uid;
+	u32 res;
 
 	fp = filp_open(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
 	if (IS_ERR(fp)) {
@@ -294,23 +296,21 @@ static void throne_tracker_fn(bool prune_only)
 		}
 		buf[count] = '\0';
 
-		struct uid_data *data = kzalloc(sizeof(struct uid_data), GFP_KERNEL);
+		data = kzalloc(sizeof(struct uid_data), GFP_KERNEL);
 		if (!data) {
 			filp_close(fp, 0);
 			goto out;
 		}
 
-		char *tmp = buf;
-		const char *delim = " ";
-		char *package = strsep(&tmp, delim);
-		char *uid = strsep(&tmp, delim);
+		tmp = buf;
+		package = strsep(&tmp, " ");
+		uid = strsep(&tmp, " ");
 		if (!uid || !package) {
 			kfree(data);
 			pr_err("update_uid: package or uid is NULL!\n");
 			break;
 		}
 
-		u32 res;
 		if (kstrtou32(uid, 10, &res)) {
 			kfree(data);
 			pr_err("update_uid: uid parse err\n");
