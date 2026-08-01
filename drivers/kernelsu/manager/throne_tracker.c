@@ -224,10 +224,6 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 			iterate_dir(file, &ctx.ctx);
 			filp_close(file, NULL);
 
-			// ^ oh so thats the issue!
-			// we were calling is_manager_apk inside iterate_dir
-			// now we defer file opens after iterate_dir
-			// this way we dont open apks while inside that
 			if (!strstarts(candidate_path, "/data/ap") )
 				goto skip_iterate;
 
@@ -241,8 +237,7 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 
 skip_iterate:
 			list_del(&pos->list);
-			if (pos != data)
-				kfree(pos);
+			kfree(pos);
 		}
 	}
 }
@@ -298,7 +293,7 @@ static void throne_tracker_fn(bool prune_only)
 
 		data = kzalloc(sizeof(struct uid_data), GFP_KERNEL);
 		if (!data) {
-			filp_close(fp, 0);
+			filp_close(fp, NULL);
 			goto out;
 		}
 
@@ -322,7 +317,7 @@ static void throne_tracker_fn(bool prune_only)
 		// reset line start
 		line_start = pos;
 	}
-	filp_close(fp, 0);
+	filp_close(fp, NULL);
 
 	// now update uid list
 
