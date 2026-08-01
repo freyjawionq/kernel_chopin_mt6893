@@ -38,23 +38,15 @@ static int do_get_info(void __user *arg)
 	cmd.flags |= KSU_GET_INFO_FLAG_LKM;
 #endif
 
-	if (is_manager())
-		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
-
+	cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
 	cmd.flags |= (1 << 3); // KSU_GET_INFO_FLAG_LEGACY (backslashxx non-GKI driver flag)
 	cmd.features = KSU_FEATURE_MAX;
 	cmd.uapi_version = KERNEL_SU_UAPI_VERSION;
 
 	if (ksuver_override) {
 		cmd.version = ksuver_override;
-	} else if (is_manager()) {
-		char comm[16];
-		get_task_comm(comm, current);
-		if (strstr(comm, "ksunext") || strstr(comm, "rifs")) {
-			cmd.version = 33227; // KernelSU Next (v3.3.0)
-		} else {
-			cmd.version = KERNEL_SU_VERSION; // 32565 (KernelSU & ReSukiSU baseline)
-		}
+	} else {
+		cmd.version = 33227; // KernelSU Next (v3.3.0) & Multi-Manager compatible version
 	}
 
 	if (ksuflags_override)
@@ -72,22 +64,14 @@ static int do_get_info_legacy(void __user *arg)
 {
 	struct ksu_get_info_legacy_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
 
-	if (is_manager())
-		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
-
+	cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
 	cmd.flags |= (1 << 3); // KSU_GET_INFO_FLAG_LEGACY (backslashxx non-GKI driver flag)
 	cmd.features = KSU_FEATURE_MAX;
 
 	if (ksuver_override) {
 		cmd.version = ksuver_override;
-	} else if (is_manager()) {
-		char comm[16];
-		get_task_comm(comm, current);
-		if (strstr(comm, "ksunext") || strstr(comm, "rifs")) {
-			cmd.version = 33227; // KernelSU Next (v3.3.0)
-		} else {
-			cmd.version = KERNEL_SU_VERSION; // 32565 (KernelSU & ReSukiSU baseline)
-		}
+	} else {
+		cmd.version = 33227; // KernelSU Next (v3.3.0) & Multi-Manager compatible version
 	}
 
 	if (ksuflags_override)
