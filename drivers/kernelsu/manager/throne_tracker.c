@@ -185,7 +185,7 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 
 	for (i = depth; i >= 0; i--) {
 		list_for_each_entry_safe(pos, n, &data_path_list, list) {
-			struct throne_tracker_dir_context ctx = {
+			struct my_dir_context ctx = {
 				.ctx.actor = my_actor,
 				.data_path_list = &data_path_list,
 				.parent_dir = pos->dirpath,
