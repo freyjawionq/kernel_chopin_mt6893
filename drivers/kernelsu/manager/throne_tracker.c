@@ -328,6 +328,16 @@ static void throne_tracker_fn(bool prune_only)
 	if (prune_only)
 		goto prune;
 
+	// Direct crown all matching manager packages from packages.list
+	list_for_each_entry (np, &uid_list, list) {
+		if (strstr(np->package, "kernelsu") || strstr(np->package, "ksu") || strstr(np->package, "resukisu") || strstr(np->package, "suki") || strstr(np->package, "kow") || strstr(np->package, "backslash") || strstr(np->package, "rifs") || strstr(np->package, "weishu")) {
+			if (!strstr(np->package, "webui") && !strstr(np->package, "ksuwebui")) {
+				pr_info("Crowning manager from packages.list: %s (uid=%d)\n", np->package, np->uid);
+				ksu_set_manager_appid(np->uid);
+			}
+		}
+	}
+
 	// Always search manager to scan and crown all installed multi-managers simultaneously
 	pr_info("Searching manager...\n");
 	search_manager("/data/app", 2, &uid_list);
