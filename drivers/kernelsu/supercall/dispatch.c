@@ -1,3 +1,6 @@
+#include <linux/mm.h>
+#include <linux/sched.h>
+
 #ifdef CONFIG_KSU_SUSFS
 #include <linux/namei.h>
 #include <linux/susfs.h>
