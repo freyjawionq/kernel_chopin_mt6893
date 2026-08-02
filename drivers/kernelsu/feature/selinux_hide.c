@@ -379,7 +379,7 @@ static void ksu_init_hook_selinux_transaction_write()
 	preempt_disable();
 	local_irq_disable();
 
-	WRITE_ONCE(*target_slot, ksu_selinux_transaction_write);
+	WRITE_ONCE(*target_slot, (void *)(uintptr_t)&ksu_selinux_transaction_write);
 
 	local_irq_enable();
 	preempt_enable();
@@ -440,7 +440,7 @@ static void ksu_init_hook_selinux_status_open()
 	preempt_disable();
 	local_irq_disable();
 
-	WRITE_ONCE(*target_slot, ksu_sel_open_handle_status);
+	WRITE_ONCE(*target_slot, (void *)(uintptr_t)&ksu_sel_open_handle_status);
 					
 	local_irq_enable();
 	preempt_enable();

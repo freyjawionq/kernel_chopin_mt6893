@@ -151,7 +151,7 @@ static void ksu_hack_lsm_slot(struct hlist_head *hook_head, uintptr_t *old_ptr, 
 	}
 
 	// make sure this happens first, this way we dont have to pre-check on the handler
-	WRITE_ONCE(*old_ptr, *(uintptr_t *)&pos->hook);
+	WRITE_ONCE(*old_ptr, (uintptr_t)pos->hook);
 	smp_mb();
 
 	pr_info("LSM: 0x%lx found at 0x%lx slot, name: %s \n", *(uintptr_t *)&pos->hook, (uintptr_t)&pos->hook, pos->lsm);
@@ -181,7 +181,7 @@ static void ksu_hack_lsm_slot(struct list_head *hook_head, uintptr_t *old_ptr, u
 		return;
 	}
 
-	WRITE_ONCE(*old_ptr, *(uintptr_t *)&pos->hook);
+	WRITE_ONCE(*old_ptr, (uintptr_t)pos->hook);
 	smp_mb();
 
 	pr_info("LSM: 0x%lx found at first slot 0x%lx\n", *(uintptr_t *)&pos->hook, (uintptr_t)&pos->hook);
