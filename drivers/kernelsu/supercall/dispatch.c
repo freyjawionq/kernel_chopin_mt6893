@@ -49,6 +49,14 @@ static inline bool str_contains(const char *str, const char *sub)
 	return false;
 }
 
+static inline void get_process_name(char *buf, size_t buflen)
+{
+	buf[0] = '\0';
+	if (current) {
+		get_task_comm(buf, current);
+	}
+}
+
 static int do_get_info(void __user *arg)
 {
 	struct ksu_get_info_cmd cmd;
