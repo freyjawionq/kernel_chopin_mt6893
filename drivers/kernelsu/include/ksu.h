@@ -1,7 +1,13 @@
 #ifndef __KSU_H_KSU
 #define __KSU_H_KSU
 
+#ifndef KSU_VERSION
+#define KSU_VERSION 32579
+#endif
+
+#ifndef KERNEL_SU_VERSION
 #define KERNEL_SU_VERSION KSU_VERSION
+#endif
 
 #define EVENT_POST_FS_DATA 1
 #define EVENT_BOOT_COMPLETED 2

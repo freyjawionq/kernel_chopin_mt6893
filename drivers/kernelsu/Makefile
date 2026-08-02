@@ -12,6 +12,7 @@ $(info -- KDIR: $(KDIR))
 $(info -- MDIR: $(MDIR))
 
 # driver version matches backslashxx KernelSU baseline (32579)
+ccflags-y += -DKSU_VERSION=32579
 CFLAGS_ksu.o += -DKSU_VERSION=32579
 CFLAGS_ksu.o += -DKSU_COMPAT_USE_SELINUX_STATE=1
 CFLAGS_ksu.o += -Wno-error -Wno-strict-prototypes -Wno-old-style-definition -Wno-incompatible-pointer-types
