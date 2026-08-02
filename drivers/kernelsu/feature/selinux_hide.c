@@ -366,7 +366,7 @@ static void ksu_init_hook_selinux_transaction_write()
 	unsigned long base = addr & PAGE_MASK;
 	unsigned long offset = addr & ~PAGE_MASK;
 
-	struct page *page = ksu_virt_to_page(base);
+	struct page *page = phys_to_page(__pa(base));
 	if (!page)
 		goto bail_out;
 
@@ -427,7 +427,7 @@ static void ksu_init_hook_selinux_status_open()
 	unsigned long base = addr & PAGE_MASK;
 	unsigned long offset = addr & ~PAGE_MASK;
 
-	struct page *page = ksu_virt_to_page(base);
+	struct page *page = phys_to_page(__pa(base));
 	if (!page)
 		goto bail_out;
 
