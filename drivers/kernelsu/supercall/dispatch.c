@@ -11,6 +11,23 @@
 bool susfs_is_boot_completed_triggered __read_mostly = false;
 #endif // #ifdef CONFIG_KSU_SUSFS
 
+static inline int ksu_copy_to_user(void __user *to, const void *from, unsigned long n)
+{
+	if (!access_ok(VERIFY_WRITE, to, n))
+		return -EFAULT;
+	return raw_copy_to_user(to, from, n) ? -EFAULT : 0;
+}
+
+static inline int ksu_copy_from_user(void *to, const void __user *from, unsigned long n)
+{
+	if (!access_ok(VERIFY_READ, from, n))
+		return -EFAULT;
+	return raw_copy_from_user(to, from, n) ? -EFAULT : 0;
+}
+
+#define copy_to_user ksu_copy_to_user
+#define copy_from_user ksu_copy_from_user
+
 static int do_grant_root(void __user *arg)
 {
 	int ret;
@@ -90,10 +107,7 @@ static int do_get_info(void __user *arg)
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
 
-	if (!access_ok(VERIFY_WRITE, arg, sizeof(cmd)))
-		return -EFAULT;
-
-	if (raw_copy_to_user(arg, &cmd, sizeof(cmd))) {
+	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
 		pr_err("get_version: copy_to_user failed\n");
 		return -EFAULT;
 	}
@@ -130,10 +144,7 @@ static int do_get_info_legacy(void __user *arg)
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
 
-	if (!access_ok(VERIFY_WRITE, arg, sizeof(cmd)))
-		return -EFAULT;
-
-	if (raw_copy_to_user(arg, &cmd, sizeof(cmd))) {
+	if (copy_to_user(arg, &cmd, sizeof(cmd))) {
 		pr_err("get_version: copy_to_user failed\n");
 		return -EFAULT;
 	}
