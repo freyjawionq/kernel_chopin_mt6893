@@ -307,11 +307,12 @@ static noinline long hook_armeabi_read(unsigned int fd, char __user *buf, size_t
  */
 static inline void ksu_poke_slot(void **target_slot, void *fn_ptr)
 {
-	preempt_disable();
-	local_irq_disable();
-	WRITE_ONCE(*target_slot, fn_ptr);
+	unsigned long flags;
 
-	local_irq_enable();
+	preempt_disable();
+	local_irq_save(flags);
+	WRITE_ONCE(*target_slot, fn_ptr);
+	local_irq_restore(flags);
 	preempt_enable();
 }
 
