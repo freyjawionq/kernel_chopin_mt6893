@@ -110,7 +110,7 @@ static inline int ksu_write_to_readonly_slot(uintptr_t slot_ptr, uintptr_t new_p
 	uintptr_t base = addr & PAGE_MASK;
 	uintptr_t offset = addr & ~PAGE_MASK;
 
-	struct page *page = phys_to_page(__pa(base));
+	struct page *page = ksu_virt_to_page(base);
 	if (!page)
 		return -EFAULT;
 

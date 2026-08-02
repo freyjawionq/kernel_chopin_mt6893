@@ -109,6 +109,13 @@ static inline void ksu_grab_init_session_keyring() {} // no-op
 #define __nocfi
 #endif
 
+static inline struct page *ksu_virt_to_page(uintptr_t addr)
+{
+	if (virt_addr_valid(addr))
+		return virt_to_page((void *)addr);
+	return phys_to_page(__pa_symbol(addr));
+}
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
 __weak long copy_from_kernel_nofault(void *dst, const void *src, size_t size)
 {
