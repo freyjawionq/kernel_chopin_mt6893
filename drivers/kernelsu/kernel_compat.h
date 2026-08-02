@@ -93,15 +93,13 @@ filp_open:
 static inline void ksu_grab_init_session_keyring() {} // no-op
 #endif // KEYS && < 5.2
 
-#ifdef READ_ONCE
-#undef READ_ONCE
-#endif
+#ifndef READ_ONCE
 #define READ_ONCE(x) (*(const volatile typeof(x) *)&(x))
-
-#ifdef WRITE_ONCE
-#undef WRITE_ONCE
 #endif
+
+#ifndef WRITE_ONCE
 #define WRITE_ONCE(x, y) (*(volatile typeof(x) *)&(x) = (typeof(x))(y))
+#endif
 
 #ifndef __ro_after_init
 #define __ro_after_init

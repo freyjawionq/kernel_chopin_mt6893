@@ -312,7 +312,7 @@ unsigned long read_word_at_a_time(const void *addr)
 # define __compiletime_error_fallback(condition) do { } while (0)
 #endif
 
-#if defined(__OPTIMIZE__) && !defined(CONFIG_LTO_CLANG)
+#ifdef __OPTIMIZE__
 # define __compiletime_assert(condition, msg, prefix, suffix)		\
 	do {								\
 		bool __cond = !(condition);				\
