@@ -1,6 +1,9 @@
 name: Build ChenXia Kernel (Chopin)
 
 on:
+  push:
+    branches:
+      - inc_ksu
   workflow_dispatch:
 
 jobs:
@@ -160,7 +163,7 @@ jobs:
 
           printf "Build info:\nDevice: POCO X3 GT [chopin]\nKernel Version: %s\nCompiler: AOSP Clang %s\nBuild host: ChenXia\nCommit / Branch: (%s) / %s\nBuild variant: KSUNext / Stable (clean)\nVariant: %s\nTimestamp: %s\nMD5: %s\n" \
             "$KERNEL_VER" "$CLANG_VER" "$COMMIT_HASH" "$BRANCH" \
-            "$(TZ='Asia/Jakarta' date '+%Y%m%d-%H%M')" "$FILE_MD5" > "build_info_${VARIANT}.txt"
+            "$VARIANT" "$(TZ='Asia/Jakarta' date '+%Y%m%d-%H%M')" "$FILE_MD5" > "build_info_${VARIANT}.txt"
 
           echo "ZIPNAME=${ZIPNAME}" >> $GITHUB_ENV
           echo "VARIANT=${VARIANT}" >> $GITHUB_ENV

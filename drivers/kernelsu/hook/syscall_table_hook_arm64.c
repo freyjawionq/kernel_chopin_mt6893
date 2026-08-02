@@ -291,19 +291,28 @@ static noinline long hook_armeabi_read(unsigned int fd, char __user *buf, size_t
 
 #endif // SYSCALL HANDLERS
 
-struct syscall_patch_param {
-	void **target_slot;	// pptr to writable vmapped sc slot
-	void *fn_ptr;		// fn_ptr to write on that slot
-};
-
-static int patch_syscall_slot_stop_machine(void *data)
+/*
+ * atomic single-slot poke via the writable vmap alias.
+ *
+ * we deliberately DO NOT use stop_machine() here. on MTK (mt6893) stop_machine
+ * never converges during device_initcall: a CPU parked in the MTK cpuidle/PPM
+ * firmware path never reaches the stopper thread, so every core freezes with
+ * IRQs masked -> HWT (wdt_status 0x2, fiq_step 0x0).
+ *
+ * a syscall table slot is a naturally-aligned 8-byte pointer, so a plain
+ * WRITE_ONCE compiles to a single STR which is atomic on arm64 -- no torn
+ * write is observable by a concurrent el0_svc dispatch (ldr x16, [stbl, ...]).
+ * we still fence off local IRQ/preempt so nothing on THIS cpu observes a stale
+ * mapping mid-flight. this mirrors what selinux_hide.c already does safely.
+ */
+static inline void ksu_poke_slot(void **target_slot, void *fn_ptr)
 {
-	struct syscall_patch_param *param = (struct syscall_patch_param *)data;
+	preempt_disable();
+	local_irq_disable();
+	WRITE_ONCE(*target_slot, fn_ptr);
 
-	// write on the actual syscall slot
-	*(param->target_slot) = param->fn_ptr;
-
-	return 0;
+	local_irq_enable();
+	preempt_enable();
 }
 
 // WARNING!!! void * abuse ahead! (type-punning, pointer-hiding!)
@@ -350,11 +359,7 @@ static void read_and_replace_syscall(void *old_ptr, unsigned long syscall_nr, vo
 	*(void **)old_ptr = *target_slot;
 	barrier();
 
-	struct syscall_patch_param param;
-	param.target_slot = target_slot;
-	param.fn_ptr = new_ptr;
-
-	stop_machine(patch_syscall_slot_stop_machine, (void *)&param, NULL);
+	ksu_poke_slot(target_slot, new_ptr);
 
 	vunmap(writable_addr);
 	smp_mb();
@@ -408,14 +413,10 @@ static void restore_syscall(void *old_ptr, unsigned long syscall_nr, void *new_p
 		pr_info("%s: syscall is not ours!\n", __func__);
 		goto out;
 	}
-	
+
 	pr_info("%s: syscall is ours! *target_slot: 0x%lx new_ptr: 0x%lx\n", __func__, (long)*target_slot, (long)new_ptr);
 
-	struct syscall_patch_param param;
-	param.target_slot = target_slot;
-	param.fn_ptr = *(void **)old_ptr;
-
-	stop_machine(patch_syscall_slot_stop_machine, (void *)&param, NULL);
+	ksu_poke_slot(target_slot, *(void **)old_ptr);
 
 	// reset storage variable
 	WRITE_ONCE(*(void **)old_ptr, NULL);
