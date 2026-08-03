@@ -7,6 +7,7 @@
 
 extern uid_t ksu_manager_appid; // Primary manager appid
 extern uid_t ksu_manager_appids[KSU_MAX_MANAGERS];
+extern int ksu_manager_profiles[KSU_MAX_MANAGERS];
 extern int ksu_manager_count;
 
 static inline bool ksu_is_manager_appid_valid()
@@ -63,6 +64,29 @@ static inline void ksu_set_manager_appid(uid_t appid)
 	if (ksu_manager_count < KSU_MAX_MANAGERS) {
 		ksu_manager_appids[ksu_manager_count++] = appid;
 	}
+}
+
+static inline void ksu_set_manager_profile(uid_t appid, int profile)
+{
+	int i;
+	uid_t raw = appid % KSU_PER_USER_RANGE;
+	ksu_set_manager_appid(raw);
+	for (i = 0; i < ksu_manager_count; i++) {
+		if (ksu_manager_appids[i] == raw) {
+			ksu_manager_profiles[i] = profile;
+			return;
+		}
+	}
+}
+
+static inline int ksu_get_manager_profile(uid_t appid)
+{
+	int i;
+	uid_t raw = appid % KSU_PER_USER_RANGE;
+	for (i = 0; i < ksu_manager_count; i++)
+		if (ksu_manager_appids[i] == raw)
+			return ksu_manager_profiles[i];
+	return KSU_MANAGER_OFFICIAL;
 }
 
 static inline bool is_manager()

@@ -60,6 +60,19 @@ static int do_get_info(void __user *arg)
 	cmd.uapi_version = KERNEL_SU_UAPI_VERSION;
 	if (is_manager())
 		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
+	switch (ksu_get_manager_profile(current_uid().val)) {
+	case KSU_MANAGER_NEXT:
+		cmd.version = 33227;
+		break;
+	case KSU_MANAGER_RESUKISU:
+		cmd.version = 35045;
+		break;
+	case KSU_MANAGER_KOWSU:
+		cmd.version = 32605;
+		break;
+	default:
+		break;
+	}
 	if (ksuver_override)
 		cmd.version = ksuver_override;
 	if (ksuflags_override)
@@ -81,6 +94,19 @@ static int do_get_info_legacy(void __user *arg)
 	cmd.features = KSU_FEATURE_MAX;
 	if (is_manager())
 		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
+	switch (ksu_get_manager_profile(current_uid().val)) {
+	case KSU_MANAGER_NEXT:
+		cmd.version = 33227;
+		break;
+	case KSU_MANAGER_RESUKISU:
+		cmd.version = 35045;
+		break;
+	case KSU_MANAGER_KOWSU:
+		cmd.version = 32605;
+		break;
+	default:
+		break;
+	}
 	if (ksuver_override)
 		cmd.version = ksuver_override;
 	if (ksuflags_override)

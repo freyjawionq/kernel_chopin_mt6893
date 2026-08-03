@@ -384,3 +384,17 @@ bool is_manager_apk(char *path)
 	|| check_v2_signature(path, 0, "79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7")  // ReSukiSU
 	);
 }
+
+enum ksu_manager_profile get_manager_profile(char *path)
+{
+	if (check_v2_signature(path, 0,
+		"79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7"))
+		return KSU_MANAGER_NEXT;
+	if (check_v2_signature(path, 0,
+		"d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64"))
+		return KSU_MANAGER_RESUKISU;
+	if (check_v2_signature(path, 0,
+		"484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588"))
+		return KSU_MANAGER_KOWSU;
+	return KSU_MANAGER_OFFICIAL;
+}
