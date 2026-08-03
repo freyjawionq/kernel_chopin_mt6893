@@ -81,7 +81,9 @@ static int do_get_info(void __user *arg)
 
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.version = KERNEL_SU_VERSION;
-	cmd.flags = KSU_GET_INFO_FLAG_MANAGER | (1 << 3);
+	/* Keep both current and pre-UAPI-v2 manager bits for older forked
+	 * managers. Bit 2 is interpreted as MANAGER by those clients. */
+	cmd.flags = KSU_GET_INFO_FLAG_MANAGER | (1 << 2) | (1 << 3);
 #ifdef MODULE
 	cmd.flags |= KSU_GET_INFO_FLAG_LKM;
 #endif
@@ -122,7 +124,7 @@ static int do_get_info_legacy(void __user *arg)
 
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.version = KERNEL_SU_VERSION;
-	cmd.flags = KSU_GET_INFO_FLAG_MANAGER | (1 << 3);
+	cmd.flags = KSU_GET_INFO_FLAG_MANAGER | (1 << 2) | (1 << 3);
 	cmd.features = KSU_FEATURE_MAX;
 
 	get_process_name(name, sizeof(name));
