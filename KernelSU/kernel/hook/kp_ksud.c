@@ -77,7 +77,8 @@ static struct kretprobe sys_fstat64_rp = {
 #endif
 
 // sys_reboot
-static int sys_reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
+static int sys_reboot_handler_pre(struct kretprobe_instance *ri,
+				  struct pt_regs *regs)
 {
 	struct pt_regs *real_regs = PT_REAL_REGS(regs);
 	int *magic1 = (int *)&PT_REGS_PARM1(real_regs); // ptr so we can mutate this
@@ -86,7 +87,7 @@ static int sys_reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
 	void __user **arg = (void __user **)&PT_REGS_SYSCALL_PARM4(real_regs);
 
 	if (*magic1 != KSU_INSTALL_MAGIC1)
-		return 0;
+		return 1;
 
 	// HACK: flip preempt status inside kp
 	// checking not really needed but its cool
@@ -107,9 +108,18 @@ static int sys_reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
 	return 0;
 }
 
-static struct kprobe sys_reboot_kp = {
-	.symbol_name = SYS_REBOOT_SYMBOL,
-	.pre_handler = sys_reboot_handler_pre,
+static int sys_reboot_handler_post(struct kretprobe_instance *ri,
+				   struct pt_regs *regs)
+{
+	/* The KernelSU request was already handled in the entry handler. */
+	regs->regs[0] = 0;
+	return 0;
+}
+
+static struct kretprobe sys_reboot_rp = {
+	.kp.symbol_name = SYS_REBOOT_SYMBOL,
+	.entry_handler = sys_reboot_handler_pre,
+	.handler = sys_reboot_handler_post,
 };
 
 static int unregister_kprobe_function(void *data)
@@ -138,8 +148,8 @@ loop_start:
 
 static __init int kp_ksud_init()
 {
-	int ret = register_kprobe(&sys_reboot_kp); // dont unreg this one
-	pr_info("kp_ksud: sys_reboot_kp: %d\n", ret);
+	int ret = register_kretprobe(&sys_reboot_rp); // dont unreg this one
+	pr_info("kp_ksud: sys_reboot_rp: %d\n", ret);
 
 	int ret2 = register_kretprobe(&sys_newfstat_rp);
 	pr_info("kp_ksud: sys_newfstat_rp: %d\n", ret2);
