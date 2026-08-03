@@ -30,14 +30,20 @@ int ksu_install_fd(void)
 	int fd;
 
 	// Get unused fd
-	fd = get_unused_fd_flags(O_CLOEXEC);
+	/*
+	 * Keep the descriptor across the libksud -> manager exec hand-off.
+	 * Older Android userspace starts the native manager bridge through an
+	 * exec'd helper; O_CLOEXEC closes the freshly installed descriptor before
+	 * the bridge can scan /proc/self/fd, leaving managers with no ioctl path.
+	 */
+	fd = get_unused_fd_flags(0);
 	if (fd < 0) {
 		pr_err("ksu_install_fd: failed to get unused fd\n");
 		return fd;
 	}
 
 	// Create anonymous inode file
-	filp = anon_inode_getfile("[ksu_driver]", &anon_ksu_fops, NULL, O_RDWR | O_CLOEXEC);
+	filp = anon_inode_getfile("[ksu_driver]", &anon_ksu_fops, NULL, O_RDWR);
 	if (IS_ERR(filp)) {
 		pr_err("ksu_install_fd: failed to create anon inode file\n");
 		put_unused_fd(fd);
