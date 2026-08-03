@@ -238,7 +238,7 @@ static __always_inline bool check_v2_signature(char *path,
 	if (kernel_read(fp, buffer, 0x10, &pos) != 0x10) {
 		goto clean;
 	}
-	if (strcmp((char *)buffer, "APK Sig Block 42")) {
+	if (memcmp(buffer, "APK Sig Block 42", 16)) {
 		goto clean;
 	}
 
