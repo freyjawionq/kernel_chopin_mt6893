@@ -19,26 +19,13 @@ struct uid_data {
 static __always_inline void crown_manager(const char *apk, struct list_head *uid_data)
 {
 	char pkg[KSU_MAX_PACKAGE_NAME];
-	bool found = false;
 	struct list_head *list = (struct list_head *)uid_data;
 	struct uid_data *np;
 
 	if (get_pkg_from_apk_path(pkg, apk) == 0) {
 		list_for_each_entry (np, list, list) {
-			if (strncmp(np->package, pkg, KSU_MAX_PACKAGE_NAME) == 0 ||
-			    (strstr(apk, np->package) && strlen(np->package) > 3)) {
+			if (strncmp(np->package, pkg, KSU_MAX_PACKAGE_NAME) == 0) {
 				pr_info("Crowning manager: %s(uid=%d)\n", np->package, np->uid);
-				ksu_set_manager_appid(np->uid);
-				found = true;
-				break;
-			}
-		}
-	}
-
-	if (!found) {
-		list_for_each_entry (np, list, list) {
-			if (strstr(apk, np->package) && strlen(np->package) > 3) {
-				pr_info("Crowning manager via path fallback: %s(uid=%d)\n", np->package, np->uid);
 				ksu_set_manager_appid(np->uid);
 				break;
 			}
@@ -325,16 +312,6 @@ static void throne_tracker_fn(bool prune_only)
 
 	if (prune_only)
 		goto prune;
-
-	// Direct crown all matching manager packages from packages.list
-	list_for_each_entry (np, &uid_list, list) {
-		if (strstr(np->package, "kernelsu") || strstr(np->package, "ksu") || strstr(np->package, "resukisu") || strstr(np->package, "suki") || strstr(np->package, "kow") || strstr(np->package, "backslash") || strstr(np->package, "rifs") || strstr(np->package, "weishu")) {
-			if (!strstr(np->package, "webui") && !strstr(np->package, "ksuwebui")) {
-				pr_info("Crowning manager from packages.list: %s (uid=%d)\n", np->package, np->uid);
-				ksu_set_manager_appid(np->uid);
-			}
-		}
-	}
 
 	// Always search manager to scan and crown all installed multi-managers simultaneously
 	pr_info("Searching manager...\n");
