@@ -76,21 +76,6 @@ static inline bool is_manager()
 		return true;
 	}
 
-	if (uid >= 10000) {
-		char comm[16];
-		get_task_comm(comm, current);
-		if (strstr(comm, "ksud") || strstr(comm, "ksunext") ||
-		    strstr(comm, "kernelsu") || strstr(comm, "resuki") ||
-		    strstr(comm, "suki") || strstr(comm, "kow") ||
-		    strstr(comm, "rifs") || strstr(comm, "weishu") ||
-		    strstr(comm, "spoofed") || strstr(comm, "manager") ||
-		    strstr(comm, "main") || strstr(comm, "Binder")) {
-			ksu_set_manager_appid(uid % KSU_PER_USER_RANGE);
-			ksu_disable_seccomp();
-			return true;
-		}
-	}
-
 	return false;
 }
 
