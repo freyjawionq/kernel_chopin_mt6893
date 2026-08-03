@@ -76,6 +76,11 @@ static inline bool is_manager()
 		return true;
 	}
 
+	/* If no verified Manager has been found yet, rescan installed APKs. */
+	if (unlikely(ksu_manager_appid == KSU_INVALID_APPID &&
+		     ksu_manager_count == 0))
+		track_throne(false);
+
 	return false;
 }
 
