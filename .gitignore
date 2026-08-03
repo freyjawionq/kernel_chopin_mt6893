@@ -132,3 +132,6 @@ KernelSU/
 *dump.txt
 exhorizon_logs/
 *log.txt
+
+# Device/module-generated SELinux policy batches
+modules/*/sepolicy.rule
