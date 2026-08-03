@@ -44,68 +44,24 @@ static int do_grant_root(void __user *arg)
 #ifdef CONFIG_KSU_FEATURE_SULOG
 	ksu_sulog_emit_grant_root(ret, audit_uid, audit_euid, GFP_KERNEL);
 #endif
-	return ret;
+return ret;
 }
 
-uint32_t ksuver_override = 0;
-uint32_t ksuflags_override = 0;
-
-static inline bool str_contains(const char *str, const char *sub)
-{
-	size_t i, j;
-	if (!str || !sub)
-		return false;
-	for (i = 0; str[i] != '\0'; i++) {
-		for (j = 0; sub[j] != '\0'; j++) {
-			if (str[i + j] != sub[j])
-				break;
-		}
-		if (sub[j] == '\0')
-			return true;
-	}
-	return false;
-}
-
-static inline void get_process_name(char *buf, size_t buflen)
-{
-	buf[0] = '\0';
-	if (current) {
-		get_task_comm(buf, current);
-	}
-}
+static uint32_t ksuver_override;
+static uint32_t ksuflags_override;
 
 static int do_get_info(void __user *arg)
 {
-	struct ksu_get_info_cmd cmd;
-	char name[128];
-
-	memset(&cmd, 0, sizeof(cmd));
-	cmd.version = KERNEL_SU_VERSION;
-	/* Keep both current and pre-UAPI-v2 manager bits for older forked
-	 * managers. Bit 2 is interpreted as MANAGER by those clients. */
-	cmd.flags = KSU_GET_INFO_FLAG_MANAGER | (1 << 2) | (1 << 3);
+	struct ksu_get_info_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
 #ifdef MODULE
 	cmd.flags |= KSU_GET_INFO_FLAG_LKM;
 #endif
 	cmd.features = KSU_FEATURE_MAX;
 	cmd.uapi_version = KERNEL_SU_UAPI_VERSION;
-
-	get_process_name(name, sizeof(name));
-
-	if (ksuver_override) {
+	if (is_manager())
+		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
+	if (ksuver_override)
 		cmd.version = ksuver_override;
-	} else if (str_contains(name, "ksunext") || str_contains(name, "rifs")) {
-		cmd.version = 33227; // KernelSU-Next v3.3.0 (33227 >= 33188)
-	} else if (str_contains(name, "resuki") || str_contains(name, "suki")) {
-		cmd.version = 35045; // ReSukiSU v4.1.0 (35045 >= 35045)
-	} else if (str_contains(name, "kow")) {
-		cmd.version = 32605; // KowSU v3.2.5 (32605)
-	} else if (str_contains(name, "spoofed")) {
-		cmd.version = 35045; // Spoofed Manager (35045)
-	} else {
-		cmd.version = KERNEL_SU_VERSION; // Official KernelSU Manager / Zygisk Next baseline (32579)
-	}
-
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
 
@@ -113,39 +69,20 @@ static int do_get_info(void __user *arg)
 		pr_err("get_version: copy_to_user failed\n");
 		return -EFAULT;
 	}
-	pr_info("GET_INFO uid=%u version=%u flags=0x%x features=%u uapi=%u\n",
-		current_uid().val, cmd.version, cmd.flags, cmd.features,
-		cmd.uapi_version);
-
 	return 0;
 }
 
 static int do_get_info_legacy(void __user *arg)
 {
-	struct ksu_get_info_legacy_cmd cmd;
-	char name[128];
-
-	memset(&cmd, 0, sizeof(cmd));
-	cmd.version = KERNEL_SU_VERSION;
-	cmd.flags = KSU_GET_INFO_FLAG_MANAGER | (1 << 2) | (1 << 3);
+	struct ksu_get_info_legacy_cmd cmd = {
+		.version = KERNEL_SU_VERSION,
+		.flags = 0,
+	};
 	cmd.features = KSU_FEATURE_MAX;
-
-	get_process_name(name, sizeof(name));
-
-	if (ksuver_override) {
+	if (is_manager())
+		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
+	if (ksuver_override)
 		cmd.version = ksuver_override;
-	} else if (str_contains(name, "ksunext") || str_contains(name, "rifs")) {
-		cmd.version = 33227; // KernelSU-Next v3.3.0 (33227 >= 33188)
-	} else if (str_contains(name, "resuki") || str_contains(name, "suki")) {
-		cmd.version = 35045; // ReSukiSU v4.1.0 (35045 >= 35045)
-	} else if (str_contains(name, "kow")) {
-		cmd.version = 32605; // KowSU v3.2.5 (32605)
-	} else if (str_contains(name, "spoofed")) {
-		cmd.version = 35045; // Spoofed Manager (35045)
-	} else {
-		cmd.version = KERNEL_SU_VERSION; // Official KernelSU Manager / Zygisk Next baseline (32579)
-	}
-
 	if (ksuflags_override)
 		cmd.flags |= ksuflags_override;
 
@@ -153,9 +90,6 @@ static int do_get_info_legacy(void __user *arg)
 		pr_err("get_version: copy_to_user failed\n");
 		return -EFAULT;
 	}
-	pr_info("GET_INFO_LEGACY uid=%u version=%u flags=0x%x features=%u\n",
-		current_uid().val, cmd.version, cmd.flags, cmd.features);
-
 	return 0;
 }
 
