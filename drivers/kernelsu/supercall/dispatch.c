@@ -113,6 +113,9 @@ static int do_get_info(void __user *arg)
 		pr_err("get_version: copy_to_user failed\n");
 		return -EFAULT;
 	}
+	pr_info("GET_INFO uid=%u version=%u flags=0x%x features=%u uapi=%u\n",
+		current_uid().val, cmd.version, cmd.flags, cmd.features,
+		cmd.uapi_version);
 
 	return 0;
 }
@@ -150,6 +153,8 @@ static int do_get_info_legacy(void __user *arg)
 		pr_err("get_version: copy_to_user failed\n");
 		return -EFAULT;
 	}
+	pr_info("GET_INFO_LEGACY uid=%u version=%u flags=0x%x features=%u\n",
+		current_uid().val, cmd.version, cmd.flags, cmd.features);
 
 	return 0;
 }
@@ -834,13 +839,19 @@ long ksu_supercall_handle_ioctl(unsigned int cmd, void __user *argp)
 
 	for (i = 0; ksu_ioctl_handlers[i].handler; i++) {
 		if (cmd == ksu_ioctl_handlers[i].cmd) {
+			int ret;
 			// Check permission first
 			if (ksu_ioctl_handlers[i].perm_check && !ksu_ioctl_handlers[i].perm_check()) {
 				pr_warn("ksu ioctl: permission denied for cmd=0x%x uid=%d\n", cmd, current_uid().val);
 				return -EPERM;
 			}
 			// Execute handler
-			return ksu_ioctl_handlers[i].handler(argp);
+			ret = ksu_ioctl_handlers[i].handler(argp);
+			if (cmd == KSU_IOCTL_GET_INFO || cmd == KSU_IOCTL_GET_INFO_LEGACY)
+				pr_info("ksu ioctl %s cmd=0x%x uid=%u ret=%d\n",
+					ksu_ioctl_handlers[i].name, cmd,
+					current_uid().val, ret);
+			return ret;
 		}
 	}
 
