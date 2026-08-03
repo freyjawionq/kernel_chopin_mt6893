@@ -375,24 +375,6 @@ int get_pkg_from_apk_path(char *pkg, const char *path)
 
 bool is_manager_apk(char *path)
 {
-	char pkg[KSU_MAX_PACKAGE_NAME];
-	if (get_pkg_from_apk_path(pkg, path) == 0) {
-		if (strstr(pkg, "kernelsu") != NULL ||
-		    strstr(pkg, "ksu") != NULL ||
-		    strstr(pkg, "resukisu") != NULL ||
-		    strstr(pkg, "suki") != NULL ||
-		    strstr(pkg, "kowx712") != NULL ||
-		    strstr(pkg, "backslash") != NULL) {
-			return true;
-		}
-	}
-
-	if (path && (strstr(path, "kernelsu") || strstr(path, "ksu") || strstr(path, "resukisu") || strstr(path, "suki") || strstr(path, "kow") || strstr(path, "backslash"))) {
-		if (!strstr(path, "webui") && !strstr(path, "ksuwebui")) {
-			return true;
-		}
-	}
-
 	return (check_v2_signature(path, 0x363, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549") // dummy.keystore
 	|| check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)  // kernelsu official
 	|| check_v2_signature(path, 0x375, "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588")  // KOWX712/KernelSU
