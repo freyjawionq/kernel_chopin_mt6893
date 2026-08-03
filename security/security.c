@@ -1601,6 +1601,14 @@ int security_kernel_load_data(enum kernel_load_data_id id)
 int security_task_fix_setuid(struct cred *new, const struct cred *old,
 			     int flags)
 {
+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_LSM_SECURITY_HOOKS)
+	extern int ksu_task_fix_setuid(struct cred *new,
+					 const struct cred *old, int flags);
+	int ret = ksu_task_fix_setuid(new, old, flags);
+
+	if (ret)
+		return ret;
+#endif
 	return call_int_hook(task_fix_setuid, 0, new, old, flags);
 }
 
@@ -2403,4 +2411,3 @@ int security_locked_down(enum lockdown_reason what)
 	return call_int_hook(locked_down, 0, what);
 }
 EXPORT_SYMBOL(security_locked_down);
-
