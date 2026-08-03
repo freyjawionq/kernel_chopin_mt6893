@@ -74,7 +74,9 @@ static bool check_block(struct file *fp, u32 *size4, loff_t *pos, u32 *offset,
 		return false;
 	*offset += 0x4 * 2;
 
-	if (*size4 == expected_size) {
+	/* Certificate size is not part of the identity. APK rebuilds and
+	 * signing-tool versions may change it while retaining the same key. */
+	if (expected_size == 0 || *size4 == expected_size) {
 		*offset += *size4;
 
 #define CERT_MAX_LENGTH 1024
@@ -375,8 +377,8 @@ int get_pkg_from_apk_path(char *pkg, const char *path)
 
 bool is_manager_apk(char *path)
 {
-	return (check_v2_signature(path, 0x363, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549") // dummy.keystore
-	|| check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)  // kernelsu official
-	|| check_v2_signature(path, 0x375, "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588")  // KOWX712/KernelSU
+	return (check_v2_signature(path, 0, "4359c171f32543394cbc23ef908c4bb94cad7c8087002ba164c8230948c21549") // dummy.keystore
+	|| check_v2_signature(path, 0, EXPECTED_HASH)  // kernelsu official
+	|| check_v2_signature(path, 0, "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588")  // KOWX712/KernelSU
 	);
 }
