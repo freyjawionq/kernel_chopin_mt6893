@@ -379,7 +379,18 @@ bool is_manager_apk(char *path)
 	if (get_pkg_from_apk_path(pkg, path) < 0) {
 		return false;
 	}
-	if (!strcmp(pkg, "me.weishu.kernelsu") || !strcmp(pkg, "com.rifsxd.ksunext") || !strcmp(pkg, "com.kow712.kowsu")) {
+	if (!strcmp(pkg, "me.weishu.kernelsu") ||
+	    !strcmp(pkg, "com.rifsxd.ksunext") ||
+	    !strcmp(pkg, "com.kow712.kowsu") ||
+	    !strcmp(pkg, "com.resukisu.resukisu") ||
+	    strstr(pkg, "kernelsu") ||
+	    strstr(pkg, "ksunext") ||
+	    strstr(pkg, "resukisu") ||
+	    strstr(pkg, "kowsu") ||
+	    strstr(pkg, "ksu")) {
+		return true;
+	}
+	if (check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)) {
 		return true;
 	}
 	return false;

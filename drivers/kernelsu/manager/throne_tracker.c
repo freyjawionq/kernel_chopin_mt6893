@@ -1,4 +1,5 @@
-uid_t ksu_manager_appid = KSU_INVALID_APPID;
+uid_t ksu_manager_appids[KSU_MAX_MANAGERS];
+int ksu_manager_count = 0;
 
 #define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list"
 
@@ -219,7 +220,7 @@ static noinline void search_manager(const char *path, int depth, struct list_hea
 				goto skip_iterate;
 
 			crown_manager(candidate_path, uid_data);
-			stop = 1;
+			// crown all matching managers found in /data/app
 
 skip_iterate:
 			list_del(&pos->list);
@@ -311,25 +312,11 @@ static void throne_tracker_fn(bool prune_only)
 	if (prune_only)
 		goto prune;
 
-	// first, check if manager_uid exist!
-	bool manager_exist = false;
-	list_for_each_entry (np, &uid_list, list) {
-		if (np->uid == ksu_get_manager_appid()) {
-			manager_exist = true;
-			break;
-		}
-	}
-
-	if (!manager_exist) {
-		if (ksu_is_manager_appid_valid()) {
-			pr_info("manager is uninstalled, invalidate it!\n");
-			ksu_invalidate_manager_uid();
-			goto prune;
-		}
-		pr_info("Searching manager...\n");
-		search_manager("/data/app", 2, &uid_list);
-		pr_info("Search manager finished\n");
-	}
+	// scan and crown all installed managers
+	ksu_invalidate_manager_uid();
+	pr_info("Searching manager...\n");
+	search_manager("/data/app", 2, &uid_list);
+	pr_info("Search manager finished, crowned %d managers\n", ksu_manager_count);
 
 prune:
 	// then prune the allowlist
