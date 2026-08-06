@@ -68,6 +68,11 @@
 #include "feature/sulog.h"
 #include "runtime/ksud.h"
 #include "sulog/event.h"
+
+bool ksu_is_manager(void)
+{
+	return is_manager();
+}
 #include "sulog/fd.h"
 
 #include "selinux/selinux.h"
