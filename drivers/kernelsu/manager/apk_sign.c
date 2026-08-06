@@ -375,5 +375,12 @@ int get_pkg_from_apk_path(char *pkg, const char *path)
 
 bool is_manager_apk(char *path)
 {
-	return true;
+	char pkg[KSU_MAX_PACKAGE_NAME];
+	if (get_pkg_from_apk_path(pkg, path) < 0) {
+		return false;
+	}
+	if (!strcmp(pkg, "me.weishu.kernelsu") || !strcmp(pkg, "com.rifsxd.ksunext") || !strcmp(pkg, "com.kow712.kowsu")) {
+		return true;
+	}
+	return false;
 }
