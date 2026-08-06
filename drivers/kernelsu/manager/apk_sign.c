@@ -382,11 +382,14 @@ bool is_manager_apk(char *path)
 	if (!strcmp(pkg, "me.weishu.kernelsu") ||
 	    !strcmp(pkg, "com.rifsxd.ksunext") ||
 	    !strcmp(pkg, "com.kow712.kowsu") ||
+	    !strcmp(pkg, "com.kowx712.supermanager") ||
 	    !strcmp(pkg, "com.resukisu.resukisu") ||
 	    strstr(pkg, "kernelsu") ||
 	    strstr(pkg, "ksunext") ||
 	    strstr(pkg, "resukisu") ||
 	    strstr(pkg, "kowsu") ||
+	    strstr(pkg, "kowx712") ||
+	    strstr(pkg, "supermanager") ||
 	    strstr(pkg, "ksu")) {
 		return true;
 	}
