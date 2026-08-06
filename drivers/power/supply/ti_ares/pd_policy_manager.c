@@ -1158,6 +1158,7 @@ static int usbpd_pm_fc2_charge_algo(struct usbpd_pm *pdpm)
 		usbpd_pm_check_cp_sec_enabled(pdpm);
 
 	pd_get_batt_current_thermal_level(pdpm, &thermal_level);
+	thermal_level = 0; /* Bypass thermal throttling */
 	pdpm->is_temp_out_fc2_range = pd_disable_cp_by_jeita_status(pdpm);
 	pr_info("is_temp_out_fc2_range = %d, thermal_level = %d\n", pdpm->is_temp_out_fc2_range, thermal_level);
 

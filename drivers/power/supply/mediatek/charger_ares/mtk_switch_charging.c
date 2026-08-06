@@ -238,22 +238,15 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 			pdata->charging_current_limit =
 					pdata->input_current_limit;
 		} else {
-			pdata->input_current_limit =
-					info->data.usb_charger_current;
-			/* it can be larger */
-			pdata->charging_current_limit =
-					info->data.usb_charger_current;
+			pdata->input_current_limit = 2000000;
+			pdata->charging_current_limit = 2000000;
 		}
 	} else if (info->chr_type == NONSTANDARD_CHARGER) {
-		pdata->input_current_limit =
-				info->data.non_std_ac_charger_current;
-		pdata->charging_current_limit =
-				info->data.non_std_ac_charger_current;
+		pdata->input_current_limit = 2500000;
+		pdata->charging_current_limit = 2500000;
 	} else if (info->chr_type == STANDARD_CHARGER) {
-		pdata->input_current_limit =
-				info->data.ac_charger_input_current;
-		pdata->charging_current_limit =
-				info->data.ac_charger_current;
+		pdata->input_current_limit = 3200000;
+		pdata->charging_current_limit = 3000000;
 		mtk_pe20_set_charging_current(info,
 					&pdata->charging_current_limit,
 					&pdata->input_current_limit);
@@ -261,20 +254,14 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 					&pdata->charging_current_limit,
 					&pdata->input_current_limit);
 	} else if (info->chr_type == CHARGING_HOST) {
-		pdata->input_current_limit =
-				info->data.charging_host_charger_current;
-		pdata->charging_current_limit =
-				info->data.charging_host_charger_current;
+		pdata->input_current_limit = 2500000;
+		pdata->charging_current_limit = 2500000;
 	} else if (info->chr_type == APPLE_1_0A_CHARGER) {
-		pdata->input_current_limit =
-				info->data.apple_1_0a_charger_current;
-		pdata->charging_current_limit =
-				info->data.apple_1_0a_charger_current;
+		pdata->input_current_limit = 2000000;
+		pdata->charging_current_limit = 2000000;
 	} else if (info->chr_type == APPLE_2_1A_CHARGER) {
-		pdata->input_current_limit =
-				info->data.apple_2_1a_charger_current;
-		pdata->charging_current_limit =
-				info->data.apple_2_1a_charger_current;
+		pdata->input_current_limit = 3000000;
+		pdata->charging_current_limit = 3000000;
 	}
 
 	if (info->enable_sw_jeita) {
@@ -283,11 +270,17 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 			pr_debug("USBIF & STAND_HOST skip current check\n");
 		else {
 			if (info->sw_jeita.sm == TEMP_T0_TO_T1) {
-				pdata->input_current_limit = 500000;
-				pdata->charging_current_limit = 350000;
+				pdata->input_current_limit = 1500000;
+				pdata->charging_current_limit = 1500000;
 			}
 		}
 	}
+
+	/* Force high fast charging floor (2.0A minimum) */
+	if (pdata->input_current_limit < 2000000)
+		pdata->input_current_limit = 2000000;
+	if (pdata->charging_current_limit < 2000000)
+		pdata->charging_current_limit = 2000000;
 
 	if (pdata->thermal_charging_current_limit != -1) {
 		if (pdata->thermal_charging_current_limit <
@@ -302,6 +295,12 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 			pdata->input_current_limit =
 					pdata->thermal_input_current_limit;
 	}
+
+	/* Prevent thermal throttling from dropping charging below 2.0A */
+	if (pdata->input_current_limit < 2000000)
+		pdata->input_current_limit = 2000000;
+	if (pdata->charging_current_limit < 2000000)
+		pdata->charging_current_limit = 2000000;
 
 	if (mtk_pe40_get_is_connect(info)) {
 		if (info->pe4.pe4_input_current_limit != -1 &&

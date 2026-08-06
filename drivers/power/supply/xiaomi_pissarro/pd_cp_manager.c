@@ -514,6 +514,8 @@ static void pdm_update_status(struct usbpd_pm *pdpm)
 	pdpm->step_chg_fcc = get_client_vote(pdpm->bbc_fcc_votable, STEP_CHARGE_VOTER);
 	pdpm->target_fcc = get_effective_result(pdpm->bbc_fcc_votable);
 	pdpm->thermal_limit_fcc = get_client_vote(pdpm->bbc_fcc_votable, THERMAL_VOTER);
+	if (pdpm->thermal_limit_fcc < 3000)
+		pdpm->thermal_limit_fcc = 3000;
 	pdpm->sic_limit_fcc = get_client_vote(pdpm->bbc_fcc_votable, SIC_VOTER);
 	if (pdpm->sic_limit_fcc > 0)
 		pdpm->thermal_limit_fcc = min(pdpm->thermal_limit_fcc, pdpm->sic_limit_fcc);

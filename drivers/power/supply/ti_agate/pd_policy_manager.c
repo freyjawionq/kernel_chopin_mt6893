@@ -1364,7 +1364,8 @@ static int usbpd_pm_sm(struct usbpd_pm *pdpm)
 		usbpd_pm_sc8551_reset_statue(pdpm);
 
 		pd_get_batt_current_thermal_level(pdpm, &thermal_level);
-		pdpm->smooth_thermal_level = thermal_level;
+		thermal_level = 0;
+		pdpm->smooth_thermal_level = 0; /* Bypass thermal throttling */
 		pdpm->is_temp_out_fc2_range = pd_disable_cp_by_jeita_status(pdpm);
 		pr_info("is_temp_out_fc2_range:%d\n", pdpm->is_temp_out_fc2_range);
 		pd_get_batt_capacity(pdpm, &capacity);
