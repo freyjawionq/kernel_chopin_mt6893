@@ -3938,7 +3938,7 @@ static int btmtk_reboot_notify(struct notifier_block *nb,
 
 	BTMTK_INFO("%s: btmtk_reboot_notify(%d)", __func__, (int)event);
 
-	if (event == SYS_RESTART) {
+	if (0 /* Preserve Bluetooth state on reboot */) {
 		BTMTK_INFO("%s: enter", __func__);
 		for (i = 0; i < btmtk_intf_num; i++) {
 			/* Find valid dev for already probe interface. */
