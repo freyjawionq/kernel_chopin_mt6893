@@ -110,7 +110,7 @@ static inline int ksu_write_to_readonly_slot(uintptr_t slot_ptr, uintptr_t new_p
 	uintptr_t base = addr & PAGE_MASK;
 	uintptr_t offset = addr & ~PAGE_MASK;
 
-	struct page *page = phys_to_page(__pa(base));
+	struct page *page = ksu_virt_to_page(base);
 	if (!page)
 		return -EFAULT;
 
@@ -151,7 +151,7 @@ static void ksu_hack_lsm_slot(struct hlist_head *hook_head, uintptr_t *old_ptr, 
 	}
 
 	// make sure this happens first, this way we dont have to pre-check on the handler
-	WRITE_ONCE(*old_ptr, (uintptr_t)pos->hook);
+	WRITE_ONCE(*old_ptr, *(uintptr_t *)&pos->hook);
 	smp_mb();
 
 	pr_info("LSM: 0x%lx found at 0x%lx slot, name: %s \n", *(uintptr_t *)&pos->hook, (uintptr_t)&pos->hook, pos->lsm);
@@ -181,7 +181,7 @@ static void ksu_hack_lsm_slot(struct list_head *hook_head, uintptr_t *old_ptr, u
 		return;
 	}
 
-	WRITE_ONCE(*old_ptr, (uintptr_t)pos->hook);
+	WRITE_ONCE(*old_ptr, *(uintptr_t *)&pos->hook);
 	smp_mb();
 
 	pr_info("LSM: 0x%lx found at first slot 0x%lx\n", *(uintptr_t *)&pos->hook, (uintptr_t)&pos->hook);
@@ -243,19 +243,8 @@ loop_start:
 }
 #endif
 
-static int (*task_prctl_fn)(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5) __read_mostly = NULL;
-static __nocfi int ksu_task_prctl(int option, unsigned long arg2, unsigned long arg3, unsigned long arg4, unsigned long arg5)
-{
-	if (option == 0xdeadbeef) {
-		ksu_handle_sys_reboot((int)arg2, (int)arg3, (unsigned int)arg4, (void __user **)arg5);
-		return 0;
-	}
-	return task_prctl_fn(option, arg2, arg3, arg4, arg5);
-}
-
 static __init void ksu_lsm_hook_init(void)
 {
-	LSM_HACK_INIT(task_prctl, ksu_task_prctl);
 	LSM_HACK_INIT(task_fix_setuid, ksu_task_fix_setuid);
 	LSM_HACK_INIT(inode_rename, ksu_inode_rename);
 	LSM_HACK_INIT(setprocattr, ksu_setprocattr);
