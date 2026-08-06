@@ -1,4 +1,4 @@
-uid_t ksu_manager_appids[KSU_MAX_MANAGERS];
+struct ksu_manager_entry ksu_managers[KSU_MAX_MANAGERS];
 int ksu_manager_count = 0;
 
 #define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list"
@@ -25,7 +25,7 @@ static __always_inline void crown_manager(const char *apk, struct list_head *uid
 	list_for_each_entry (np, list, list) {
 		if (strncmp(np->package, pkg, KSU_MAX_PACKAGE_NAME) == 0) {
 			pr_info("Crowning manager: %s(uid=%d)\n", pkg, np->uid);
-			ksu_set_manager_appid(np->uid);
+			ksu_register_manager(np->uid, pkg);
 			break;
 		}
 	}

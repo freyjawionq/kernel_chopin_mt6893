@@ -22,7 +22,7 @@ static uint32_t ksuflags_override = 0;
 
 static int do_get_info(void __user *arg)
 {
-	struct ksu_get_info_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
+	struct ksu_get_info_cmd cmd = { .version = ksu_get_manager_version_for_current(KERNEL_SU_VERSION), .flags = 0 };
 
 #ifdef MODULE
 	cmd.flags |= KSU_GET_INFO_FLAG_LKM;
@@ -50,7 +50,7 @@ static int do_get_info(void __user *arg)
 
 static int do_get_info_legacy(void __user *arg)
 {
-	struct ksu_get_info_legacy_cmd cmd = { .version = KERNEL_SU_VERSION, .flags = 0 };
+	struct ksu_get_info_legacy_cmd cmd = { .version = ksu_get_manager_version_for_current(KERNEL_SU_VERSION), .flags = 0 };
 
 	if (is_manager()) {
 		cmd.flags |= KSU_GET_INFO_FLAG_MANAGER;
