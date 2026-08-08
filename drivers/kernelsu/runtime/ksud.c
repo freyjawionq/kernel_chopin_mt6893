@@ -17,7 +17,6 @@ static const char KERNEL_SU_RC[] =
 
 	"on property:sys.boot_completed=1\n"
 	"    exec u:r:" KERNEL_SU_DOMAIN ":s0 root -- " KSUD_PATH " boot-completed\n"
-	"    exec u:r:" KERNEL_SU_DOMAIN ":s0 root -- /system/bin/sh -c \"sleep 3; settings put global bluetooth_on 1; svc bluetooth enable; cmd bluetooth_manager enable\"\n"
 	"\n"
 
 	"\n";
