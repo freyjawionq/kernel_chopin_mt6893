@@ -138,11 +138,10 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 		goto done;
 	}
 
+	info->usb_unlimited = true;
 	if (info->usb_unlimited) {
 		pdata->input_current_limit = 3200000;
-
-		pdata->charging_current_limit =
-					info->data.ac_charger_current;
+		pdata->charging_current_limit = 6000000;
 		goto done;
 	}
 
