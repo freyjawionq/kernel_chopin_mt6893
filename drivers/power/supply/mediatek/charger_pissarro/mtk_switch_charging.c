@@ -241,11 +241,11 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 done:
 	ret = charger_dev_get_min_charging_current(info->chg1_dev, &ichg1_min);
 	if (ret != -ENOTSUPP && pdata->charging_current_limit < ichg1_min)
-		pdata->charging_current_limit = 0;
+		pdata->charging_current_limit = ichg1_min;
 
 	ret = charger_dev_get_min_input_current(info->chg1_dev, &aicr1_min);
 	if (ret != -ENOTSUPP && pdata->input_current_limit < aicr1_min)
-		pdata->input_current_limit = 0;
+		pdata->input_current_limit = aicr1_min;
 
 	chr_err("force:%d setting:%d %d type:%d usb_unlimited:%d usbif:%d usbsm:%d aicl:%d atm:%d\n",
 		_uA_to_mA(pdata->force_charging_current),

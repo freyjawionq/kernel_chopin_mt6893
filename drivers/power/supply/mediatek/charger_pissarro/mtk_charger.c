@@ -2706,6 +2706,8 @@ static int mtk_charger_probe(struct platform_device *pdev)
 	init_waitqueue_head(&info->wait_que);
 	info->polling_interval = CHARGING_INTERVAL;
 	info->enable_dynamic_cv = true;
+	info->enable_sw_jeita = false;
+	info->usb_unlimited = true;
 
 	info->chg1_data.input_current_limit_by_aicl = -1;
 
