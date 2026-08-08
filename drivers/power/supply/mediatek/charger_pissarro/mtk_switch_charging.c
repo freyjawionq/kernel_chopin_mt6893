@@ -124,6 +124,8 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 		}
 	}
 
+	pdata->force_charging_current = 0;
+
 	if (pdata->force_charging_current > 0) {
 
 		pdata->charging_current_limit = pdata->force_charging_current;

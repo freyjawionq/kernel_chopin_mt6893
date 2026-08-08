@@ -237,7 +237,7 @@ void BATTERY_SetUSBState(int usb_state_value)
 
 unsigned int set_chr_input_current_limit(int current_limit)
 {
-	return 500;
+	return 3200;
 }
 
 int get_chr_temperature(int *min_temp, int *max_temp)
