@@ -963,6 +963,9 @@ static int BT_init(void)
 
 	sema_init(&bt_on_mtx, 1);
 
+	/* Auto power-on Bluetooth chip on kernel driver init */
+	mtk_wcn_wmt_func_on(WMTDRV_TYPE_BT);
+
 	pm_qos_set_feature();
 	if(pm_qos_support) {
 		#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 7, 0)
