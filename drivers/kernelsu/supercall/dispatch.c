@@ -731,6 +731,7 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
 
 #ifdef CONFIG_KSU_SUSFS
 #include <linux/susfs.h>
+#include <linux/compat.h>
 
 static int do_susfs_dispatch(unsigned int cmd, void __user *arg)
 {
@@ -809,7 +810,8 @@ long ksu_supercall_handle_ioctl(unsigned int cmd, void __user *argp)
 
 #ifdef CONFIG_KSU_SUSFS
 	if ((cmd >= 0x55550 && cmd <= 0x55600) || (cmd >= 0x60000 && cmd <= 0x60020)) {
-		return do_susfs_dispatch(cmd, argp);
+		void __user *safe_arg = is_compat_task() ? compat_ptr((compat_uptr_t)(uintptr_t)argp) : argp;
+		return do_susfs_dispatch(cmd, safe_arg);
 	}
 #endif
 
