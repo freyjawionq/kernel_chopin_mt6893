@@ -1358,29 +1358,23 @@ static int check_charge_parameters(struct charger_manager *info)
 
 	switch(info->psy_type) {
 	case POWER_SUPPLY_TYPE_USB:
-		vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, SDP_ICL);
-		vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, SDP_FCC / div_rate);
+		vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, 3200);
+		vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, 6000);
 		vote(info->bbc_vinmin_votable, CHARGER_TYPE_VOTER, true, SDP_VINMIN);
 		break;
 	case POWER_SUPPLY_TYPE_USB_CDP:
-		vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, CDP_ICL);
-		vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, CDP_FCC / div_rate);
+		vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, 3200);
+		vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, 6000);
 		vote(info->bbc_vinmin_votable, CHARGER_TYPE_VOTER, true, CDP_VINMIN);
 		break;
 	case POWER_SUPPLY_TYPE_USB_DCP:
-		if (info->i350_type == XMUSB350_TYPE_DCP) {
-			vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, DCP_ICL / (info->recheck_count >= 2 ? 1 : 2));
-			vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, DCP_FCC / div_rate);
-			vote(info->bbc_vinmin_votable, CHARGER_TYPE_VOTER, true, DCP_VINMIN);
-		} else if (info->i350_type == XMUSB350_TYPE_OCP) {
-			vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, OCP_ICL);
-			vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, OCP_FCC / div_rate);
-			vote(info->bbc_vinmin_votable, CHARGER_TYPE_VOTER, true, OCP_VINMIN);
-		}
+		vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, 3200);
+		vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, 6000);
+		vote(info->bbc_vinmin_votable, CHARGER_TYPE_VOTER, true, DCP_VINMIN);
 		break;
 	case POWER_SUPPLY_TYPE_USB_FLOAT:
-		vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, FLOAT_ICL);
-		vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, FLOAT_FCC / div_rate);
+		vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, 3200);
+		vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, 6000);
 		vote(info->bbc_vinmin_votable, CHARGER_TYPE_VOTER, true, FLOAT_VINMIN);
 		break;
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
