@@ -818,20 +818,37 @@ long ksu_supercall_handle_ioctl(unsigned int cmd, void __user *argp)
 		pr_info("Spoofed manager auto-crowned on ioctl 0x%x: uid=%d\n", cmd, current_uid().val);
 	}
 
+	// First pass: exact match on full cmd (dir + size + type + nr)
 	for (i = 0; ksu_ioctl_handlers[i].handler; i++) {
-		unsigned int map_nr = _IOC_NR(ksu_ioctl_handlers[i].cmd);
-		if (cmd == ksu_ioctl_handlers[i].cmd ||
-		    (type == 'K' && (nr == map_nr ||
-		                     (nr == 0x65 && map_nr == 2) ||
-		                     (nr == 0x67 && map_nr == 6) ||
-		                     (nr == 0x69 && map_nr == 7)))) {
-			// Check permission first
+		if (cmd == ksu_ioctl_handlers[i].cmd) {
 			if (ksu_ioctl_handlers[i].perm_check && !ksu_ioctl_handlers[i].perm_check()) {
 				pr_warn("ksu ioctl: permission denied for cmd=0x%x uid=%d\n", cmd, current_uid().val);
 				return -EPERM;
 			}
-			// Execute handler
 			return ksu_ioctl_handlers[i].handler(argp);
+		}
+	}
+
+	// Second pass: legacy fallback for old manager binaries using raw nr
+	if (type == 'K') {
+		for (i = 0; ksu_ioctl_handlers[i].handler; i++) {
+			unsigned int map_nr = _IOC_NR(ksu_ioctl_handlers[i].cmd);
+			// Skip legacy 512-byte writers if nr matches 6 or 7 to prevent stack corruption
+			if ((nr == 6 || nr == 0x67) && ksu_ioctl_handlers[i].cmd == KSU_IOCTL_GET_ALLOW_LIST)
+				continue;
+			if ((nr == 7 || nr == 0x69) && ksu_ioctl_handlers[i].cmd == KSU_IOCTL_GET_DENY_LIST)
+				continue;
+
+			if (nr == map_nr ||
+			    (nr == 0x65 && map_nr == 2) ||
+			    (nr == 0x67 && ksu_ioctl_handlers[i].cmd == KSU_IOCTL_NEW_GET_ALLOW_LIST) ||
+			    (nr == 0x69 && ksu_ioctl_handlers[i].cmd == KSU_IOCTL_NEW_GET_DENY_LIST)) {
+				if (ksu_ioctl_handlers[i].perm_check && !ksu_ioctl_handlers[i].perm_check()) {
+					pr_warn("ksu ioctl: permission denied for cmd=0x%x uid=%d\n", cmd, current_uid().val);
+					return -EPERM;
+				}
+				return ksu_ioctl_handlers[i].handler(argp);
+			}
 		}
 	}
 
