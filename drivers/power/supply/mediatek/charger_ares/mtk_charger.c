@@ -1189,6 +1189,11 @@ void charger_manager_set_prop_system_temp_level(int temp_level)
 		__func__, charger_manager_get_prop_system_temp_scene(), pinfo->system_temp_level,
 		thermal_icl_ua, thermal_fcc_ua, pinfo->usb_psy->desc->type);
 
+	if (thermal_icl_ua > 0 && thermal_icl_ua < 3200000)
+		thermal_icl_ua = 3200000;
+	if (thermal_fcc_ua > 0 && thermal_fcc_ua < 3200000)
+		thermal_fcc_ua = 3200000;
+
 	if (thermal_icl_ua) {
 		ret = charger_manager_set_input_current(thermal_icl_ua);
 		if (ret > 0)

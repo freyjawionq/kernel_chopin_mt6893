@@ -245,36 +245,8 @@ static void monitor_thermal_limit(struct charger_manager *info)
 		}
 	}
 
-	switch(info->psy_type) {
-	case POWER_SUPPLY_TYPE_USB_DCP:
-		vote(info->bbc_fcc_votable, THERMAL_VOTER, true, info->thermal_limit[0][thermal_level]);
-		break;
-	case POWER_SUPPLY_TYPE_USB_HVDCP:
-		vote(info->bbc_fcc_votable, THERMAL_VOTER, true, info->thermal_limit[1][thermal_level]);
-		break;
-	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
-	case POWER_SUPPLY_TYPE_USB_HVDCP_3_PLUS:
-		switch(info->qc3_type) {
-		case HVDCP3_18:
-			vote(info->bbc_fcc_votable, THERMAL_VOTER, true, info->thermal_limit[2][thermal_level]);
-			break;
-		case HVDCP3_27:
-			vote(info->bbc_fcc_votable, THERMAL_VOTER, true, info->thermal_limit[3][thermal_level]);
-			break;
-		case HVDCP35_18:
-		case HVDCP35_27:
-			vote(info->bbc_fcc_votable, THERMAL_VOTER, true, info->thermal_limit[4][thermal_level]);
-			break;
-		default:
-			chr_err("not support qc3_type to check charger parameters");
-		}
-		break;
-	case POWER_SUPPLY_TYPE_USB_PD:
-		vote(info->bbc_fcc_votable, THERMAL_VOTER, true, info->thermal_limit[5][thermal_level]);
-		break;
-	default:
-		break;
-	}
+	/* Disable thermal throttling on fast charge current */
+	vote(info->bbc_fcc_votable, THERMAL_VOTER, false, 0);
 
 	if (product_name == PISSARRO) {
 		if (info->last_thermal_level == 15 && thermal_level < 15) {
