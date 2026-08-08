@@ -245,8 +245,11 @@ static void monitor_thermal_limit(struct charger_manager *info)
 		}
 	}
 
-	/* Disable thermal throttling on fast charge current */
+	/* Force maximum fast charge current (6000mA) and input current (3200mA) */
+	vote(info->bbc_fcc_votable, STEP_JEITA_VOTER, true, 6000);
+	vote(info->bbc_icl_votable, STEP_JEITA_VOTER, true, 3200);
 	vote(info->bbc_fcc_votable, THERMAL_VOTER, false, 0);
+	vote(info->bbc_icl_votable, THERMAL_VOTER, false, 0);
 
 	if (product_name == PISSARRO) {
 		if (info->last_thermal_level == 15 && thermal_level < 15) {
