@@ -85,11 +85,34 @@ void on_module_mounted(void)
 	ksu_module_mounted = true;
 }
 
+#include <linux/kmod.h>
+#include <linux/delay.h>
+#include <linux/workqueue.h>
+
+static void ksu_auto_enable_bt_fn(struct work_struct *work)
+{
+	static char *envp[] = {
+		"HOME=/",
+		"PATH=/product/bin:/apex/com.android.runtime/bin:/system/bin:/system/xbin:/odm/bin:/vendor/bin:/vendor/xbin",
+		NULL
+	};
+	static char *argv[] = {
+		"/system/bin/sh",
+		"-c",
+		"bt=$(settings get global bluetooth_on 2>/dev/null); if [ \"$bt\" = \"1\" ] || [ -z \"$bt\" ]; then svc bluetooth enable; fi",
+		NULL
+	};
+	msleep(2000);
+	call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
+}
+static DECLARE_DELAYED_WORK(ksu_bt_work, ksu_auto_enable_bt_fn);
+
 void on_boot_completed(void)
 {
 	ksu_boot_completed = true;
 	pr_info("on_boot_completed!\n");
 	track_throne(false);
+	schedule_delayed_work(&ksu_bt_work, msecs_to_jiffies(3000));
 }
 
 static ssize_t (*orig_read)(struct file *, char __user *, size_t, loff_t *);
