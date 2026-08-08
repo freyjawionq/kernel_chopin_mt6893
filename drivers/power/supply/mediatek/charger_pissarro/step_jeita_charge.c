@@ -248,6 +248,8 @@ static void monitor_thermal_limit(struct charger_manager *info)
 	/* Force maximum fast charge current (6000mA) and input current (3200mA) */
 	vote(info->bbc_fcc_votable, STEP_JEITA_VOTER, true, 6000);
 	vote(info->bbc_icl_votable, STEP_JEITA_VOTER, true, 3200);
+	vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, 6000);
+	vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, 3200);
 	vote(info->bbc_fcc_votable, THERMAL_VOTER, false, 0);
 	vote(info->bbc_icl_votable, THERMAL_VOTER, false, 0);
 

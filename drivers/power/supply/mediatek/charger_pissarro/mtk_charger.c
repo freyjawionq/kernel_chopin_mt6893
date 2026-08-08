@@ -591,18 +591,7 @@ void charger_manager_set_thermal_level(int thermal_level)
 	if (pinfo == NULL)
 		return;
 
-	if (thermal_level < 0 || pinfo->thermal_level < 0) {
-		if (thermal_level <= -888)
-			pinfo->thermal_level = 0;
-		else if (thermal_level < 0)
-			pinfo->thermal_level = thermal_level;
-		return;
-	}
-
-	if (thermal_level > THERMAL_LIMIT_COUNT - 1)
-		thermal_level = THERMAL_LIMIT_COUNT - 1;
-
-	pinfo->thermal_level = thermal_level;
+	pinfo->thermal_level = 0;
 }
 
 int charger_manager_get_thermal_limit_fcc(void)
@@ -610,7 +599,7 @@ int charger_manager_get_thermal_limit_fcc(void)
 	if (pinfo == NULL)
 		return 0;
 
-	return pinfo->thermal_limit_fcc;
+	return 6000;
 }
 
 void charger_manager_set_thermal_limit_fcc(int thermal_limit_fcc)
@@ -618,10 +607,7 @@ void charger_manager_set_thermal_limit_fcc(int thermal_limit_fcc)
 	if (pinfo == NULL)
 		return;
 
-	if (!is_between(0, pinfo->max_fcc, thermal_limit_fcc))
-		return;
-
-	pinfo->thermal_limit_fcc = thermal_limit_fcc;
+	pinfo->thermal_limit_fcc = 6000;
 }
 
 int charger_manager_get_sic_current(void)
