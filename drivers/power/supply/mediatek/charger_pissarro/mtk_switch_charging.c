@@ -238,6 +238,10 @@ static void swchg_select_charging_current_limit(struct charger_manager *info)
 	if (pdata->charging_current_limit < 2000000)
 		pdata->charging_current_limit = 2000000;
 done:
+	/* Force 3.2A ICL and 6.0A FCC after done label to override all daemon/goto done throttles */
+	pdata->input_current_limit = 3200000;
+	pdata->charging_current_limit = 6000000;
+
 	ret = charger_dev_get_min_charging_current(info->chg1_dev, &ichg1_min);
 	if (ret != -ENOTSUPP && pdata->charging_current_limit < ichg1_min)
 		pdata->charging_current_limit = ichg1_min;
