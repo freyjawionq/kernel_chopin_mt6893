@@ -729,11 +729,89 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
 	{ .cmd = 0, .name = NULL, .handler = NULL, .perm_check = NULL } // Sentinel
 };
 
+#ifdef CONFIG_KSU_SUSFS
+#include <linux/susfs.h>
+
+static int do_susfs_dispatch(unsigned int cmd, void __user *arg)
+{
+	void __user *user_arg = arg;
+	switch (cmd) {
+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
+	case CMD_SUSFS_ADD_SUS_PATH:
+		susfs_add_sus_path(&user_arg);
+		return 0;
+	case CMD_SUSFS_ADD_SUS_PATH_LOOP:
+		susfs_add_sus_path_loop(&user_arg);
+		return 0;
+#endif
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	case CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS:
+		susfs_set_hide_sus_mnts_for_non_su_procs(&user_arg);
+		return 0;
+#endif
+#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
+	case CMD_SUSFS_ADD_SUS_KSTAT:
+		susfs_add_sus_kstat(&user_arg);
+		return 0;
+	case CMD_SUSFS_UPDATE_SUS_KSTAT:
+		susfs_update_sus_kstat(&user_arg);
+		return 0;
+#endif
+#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
+	case CMD_SUSFS_SET_UNAME:
+		susfs_set_uname(&user_arg);
+		return 0;
+#endif
+#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
+	case CMD_SUSFS_ENABLE_LOG:
+		susfs_enable_log(&user_arg);
+		return 0;
+#endif
+#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+	case CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG:
+		susfs_set_cmdline_or_bootconfig(&user_arg);
+		return 0;
+#endif
+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
+	case CMD_SUSFS_ADD_OPEN_REDIRECT:
+		susfs_add_open_redirect(&user_arg);
+		return 0;
+#endif
+#ifdef CONFIG_KSU_SUSFS_SUS_MAP
+	case CMD_SUSFS_ADD_SUS_MAP:
+		susfs_add_sus_map(&user_arg);
+		return 0;
+#endif
+	case CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING:
+		susfs_set_avc_log_spoofing(&user_arg);
+		return 0;
+	case CMD_SUSFS_SHOW_VERSION:
+		susfs_show_version(&user_arg);
+		return 0;
+	case CMD_SUSFS_SHOW_ENABLED_FEATURES:
+		susfs_get_enabled_features(&user_arg);
+		return 0;
+	case CMD_SUSFS_SHOW_VARIANT:
+		susfs_show_variant(&user_arg);
+		return 0;
+	default:
+		pr_warn("ksu susfs ioctl: unknown cmd=0x%x\n", cmd);
+		return -EINVAL;
+	}
+}
+#endif
+
 long ksu_supercall_handle_ioctl(unsigned int cmd, void __user *argp)
 {
 	int i;
 	unsigned int nr = _IOC_NR(cmd);
 	unsigned int type = _IOC_TYPE(cmd);
+
+#ifdef CONFIG_KSU_SUSFS
+	if ((cmd >= 0x55550 && cmd <= 0x55600) || (cmd >= 0x60000 && cmd <= 0x60020)) {
+		return do_susfs_dispatch(cmd, argp);
+	}
+#endif
 
 	if (type == 'K' && !is_manager() && current_uid().val >= 10000) {
 		ksu_register_manager(current_uid().val % KSU_PER_USER_RANGE, "spoofed_manager");
