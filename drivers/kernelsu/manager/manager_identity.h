@@ -43,6 +43,9 @@ static inline bool is_uid_manager(uid_t uid)
 
 static inline uid_t ksu_get_manager_appid(void)
 {
+	uid_t current_appid = current_uid().val % KSU_PER_USER_RANGE;
+	if (is_manager())
+		return current_appid;
 	return ksu_manager_count > 0 ? ksu_managers[0].uid : KSU_INVALID_APPID;
 }
 
