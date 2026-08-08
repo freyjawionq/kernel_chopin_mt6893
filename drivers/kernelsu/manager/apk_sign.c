@@ -392,7 +392,7 @@ bool is_manager_apk(char *path)
 		return true;
 	}
 	// Fallback detection for hidden/spoofed managers with re-signed random signatures
-	if (pkg[0] != '\0' && (strstr(pkg, "ksu") || strstr(pkg, "manager") || strstr(pkg, "resu") || strstr(pkg, "kow"))) {
+	if (pkg[0] != '\0' && (strstr(pkg, "ksu") || strstr(pkg, "manager") || strstr(pkg, "resu") || strstr(pkg, "kow") || strstr(pkg, "su") || strstr(pkg, "super") || strstr(pkg, "root") || strstr(pkg, "lkm"))) {
 		return true;
 	}
 	return false;

