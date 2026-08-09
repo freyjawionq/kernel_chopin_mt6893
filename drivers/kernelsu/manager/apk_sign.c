@@ -373,6 +373,43 @@ int get_pkg_from_apk_path(char *pkg, const char *path)
 	return 0;
 }
 
+static bool has_ksud_in_apk(const char *path)
+{
+	struct file *fp = filp_open(path, O_RDONLY, 0);
+	if (IS_ERR(fp))
+		return false;
+
+	fp->f_mode |= FMODE_NONOTIFY;
+
+	struct zip_entry_header header;
+	loff_t pos = 0;
+	int entry_count = 0;
+
+	while (entry_count++ < 2000 && kernel_read(fp, &header, sizeof(struct zip_entry_header), &pos) == sizeof(struct zip_entry_header)) {
+		if (header.signature != 0x04034b50) {
+			break;
+		}
+
+		if (header.file_name_length > 0 && header.file_name_length < 256) {
+			char fileName[256];
+			if (kernel_read(fp, fileName, header.file_name_length, &pos) == header.file_name_length) {
+				fileName[header.file_name_length] = '\0';
+				if (strstr(fileName, "libksud.so")) {
+					filp_close(fp, 0);
+					return true;
+				}
+			}
+		} else {
+			pos += header.file_name_length;
+		}
+
+		pos += header.extra_field_length + header.compressed_size;
+	}
+
+	filp_close(fp, 0);
+	return false;
+}
+
 bool is_manager_apk(char *path)
 {
 	char pkg[KSU_MAX_PACKAGE_NAME];
@@ -387,12 +424,18 @@ bool is_manager_apk(char *path)
 	    !strcmp(pkg, "com.resukisu.resukisu")) {
 		return true;
 	}
-	// Check signature for spoofed manager APKs (randomized package name)
+	// Check signature for official manager APKs
 	if (check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)) {
 		return true;
 	}
 	// Fallback detection for hidden/spoofed managers with re-signed random signatures
 	if (pkg[0] != '\0' && (strstr(pkg, "ksu") || strstr(pkg, "manager") || strstr(pkg, "resu") || strstr(pkg, "kow") || strstr(pkg, "su") || strstr(pkg, "super") || strstr(pkg, "root") || strstr(pkg, "lkm"))) {
+		return true;
+	}
+	// Bulletproof check for repackaged/spoofed managers (random package name & signature):
+	// Every KernelSU manager APK embeds libksud.so in its zip entries!
+	if (has_ksud_in_apk(path)) {
+		pr_info("KernelSU: Found libksud.so in APK %s (pkg: %s), crowning spoofed manager!\n", path, pkg);
 		return true;
 	}
 	return false;
