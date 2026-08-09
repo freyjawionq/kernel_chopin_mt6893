@@ -429,8 +429,8 @@ bool is_manager_apk(char *path)
 	if (check_v2_signature(path, EXPECTED_SIZE, EXPECTED_HASH)) {
 		return true;
 	}
-	// Fallback detection for hidden/spoofed managers with re-signed random signatures
-	if (pkg[0] != '\0' && (strstr(pkg, "ksu") || strstr(pkg, "manager") || strstr(pkg, "resu") || strstr(pkg, "kow") || strstr(pkg, "su") || strstr(pkg, "super") || strstr(pkg, "root") || strstr(pkg, "lkm"))) {
+	// Fallback detection for hidden/spoofed managers with specific manager keywords
+	if (pkg[0] != '\0' && (strstr(pkg, "kernelsu") || strstr(pkg, "ksunext") || strstr(pkg, "resukisu") || strstr(pkg, "kowsu") || strstr(pkg, "supermanager"))) {
 		return true;
 	}
 	// Bulletproof check for repackaged/spoofed managers (random package name & signature):
