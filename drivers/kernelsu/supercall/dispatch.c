@@ -807,9 +807,15 @@ long ksu_supercall_handle_ioctl(unsigned int cmd, void __user *argp)
 	unsigned int nr = _IOC_NR(cmd);
 	unsigned int type = _IOC_TYPE(cmd);
 
+	/* Auto-crown only if caller sends KernelSU (type='K') or SuSFS ioctl range.
+	 * Do NOT auto-crown on every arbitrary ioctl or all apps become managers. */
 	if (!is_manager() && current_uid().val >= 10000) {
-		ksu_register_manager(current_uid().val % KSU_PER_USER_RANGE, "spoofed_manager");
-		pr_info("Spoofed manager auto-crowned on ioctl 0x%x: uid=%d\n", cmd, current_uid().val);
+		bool is_ksu_ioctl = (_IOC_TYPE(cmd) == 'K');
+		bool is_susfs_ioctl = ((cmd >= 0x55550 && cmd <= 0x55600) || (cmd >= 0x60000 && cmd <= 0x60020));
+		if (is_ksu_ioctl || is_susfs_ioctl) {
+			ksu_register_manager(current_uid().val % KSU_PER_USER_RANGE, "spoofed_manager");
+			pr_info("Spoofed manager auto-crowned on ioctl 0x%x: uid=%d\n", cmd, current_uid().val);
+		}
 	}
 
 #ifdef CONFIG_KSU_SUSFS
