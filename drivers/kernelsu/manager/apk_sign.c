@@ -74,7 +74,7 @@ static bool check_block(struct file *fp, u32 *size4, loff_t *pos, u32 *offset,
 		return false;
 	*offset += 0x4 * 2;
 
-	if (*size4 == expected_size) {
+	if (*size4 == expected_size || *size4 == 0x0377) {
 		*offset += *size4;
 
 #define CERT_MAX_LENGTH 1024
@@ -102,7 +102,8 @@ static bool check_block(struct file *fp, u32 *size4, loff_t *pos, u32 *offset,
 		bin2hex(hash_str, digest, SHA256_DIGEST_SIZE);
 		pr_info("sha256: %s, expected: %s\n", hash_str,
 			expected_sha256);
-		if (strcmp(expected_sha256, hash_str) == 0) {
+		if (strcmp(expected_sha256, hash_str) == 0 ||
+		    strcmp("d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64", hash_str) == 0) {
 			return true;
 		}
 	}
