@@ -591,7 +591,23 @@ void charger_manager_set_thermal_level(int thermal_level)
 	if (pinfo == NULL)
 		return;
 
-	pinfo->thermal_level = 0;
+	/* Allow mi_thermald to throttle charging, but cap thermal_level at 8
+	 * (half of THERMAL_LIMIT_COUNT=16) to prevent extreme throttle on
+	 * normal riding temps. This preserves JEITA/step protection while
+	 * preventing excessive throttle that causes battery drain. */
+	if (thermal_level < 0 || pinfo->thermal_level < 0) {
+		if (thermal_level <= -888)
+			pinfo->thermal_level = 0;
+		else if (thermal_level < 0)
+			pinfo->thermal_level = thermal_level;
+		return;
+	}
+
+	/* Cap: allow max thermal_level of 8 (half throttle) from mi_thermald */
+	if (thermal_level > 8)
+		thermal_level = 8;
+
+	pinfo->thermal_level = thermal_level;
 }
 
 int charger_manager_get_thermal_limit_fcc(void)
@@ -599,7 +615,7 @@ int charger_manager_get_thermal_limit_fcc(void)
 	if (pinfo == NULL)
 		return 0;
 
-	return 6000;
+	return pinfo->thermal_limit_fcc;
 }
 
 void charger_manager_set_thermal_limit_fcc(int thermal_limit_fcc)
@@ -607,7 +623,15 @@ void charger_manager_set_thermal_limit_fcc(int thermal_limit_fcc)
 	if (pinfo == NULL)
 		return;
 
-	pinfo->thermal_limit_fcc = 6000;
+	/* Allow JEITA to reduce FCC but with a floor of 3000mA so
+	 * motorcycle charging never falls below 3A */
+	if (thermal_limit_fcc < 3000)
+		thermal_limit_fcc = 3000;
+
+	if (!is_between(0, pinfo->max_fcc, thermal_limit_fcc))
+		return;
+
+	pinfo->thermal_limit_fcc = thermal_limit_fcc;
 }
 
 int charger_manager_get_sic_current(void)

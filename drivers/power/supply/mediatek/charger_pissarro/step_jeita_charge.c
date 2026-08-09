@@ -245,13 +245,9 @@ static void monitor_thermal_limit(struct charger_manager *info)
 		}
 	}
 
-	/* Force maximum fast charge current (6000mA) and input current (3200mA) */
-	vote(info->bbc_fcc_votable, STEP_JEITA_VOTER, true, 6000);
-	vote(info->bbc_icl_votable, STEP_JEITA_VOTER, true, 3200);
-	vote(info->bbc_fcc_votable, CHARGER_TYPE_VOTER, true, 6000);
-	vote(info->bbc_icl_votable, CHARGER_TYPE_VOTER, true, 3200);
-	vote(info->bbc_fcc_votable, THERMAL_VOTER, false, 0);
-	vote(info->bbc_icl_votable, THERMAL_VOTER, false, 0);
+	/* Charger type limits are already set by CHARGER_TYPE_VOTER in mtk_charger.c.
+	 * THERMAL_VOTER and JEITA are left to operate normally.
+	 * charger_manager_set_thermal_level caps mi_thermald throttle at level 8 max. */
 
 	if (product_name == PISSARRO) {
 		if (info->last_thermal_level == 15 && thermal_level < 15) {
