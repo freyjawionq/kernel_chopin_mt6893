@@ -74,22 +74,10 @@ static inline void ksu_register_manager(uid_t appid, const char *pkg)
 		if (pkg) {
 			strncpy(ksu_managers[ksu_manager_count].pkg, pkg, KSU_MAX_PACKAGE_NAME - 1);
 			ksu_managers[ksu_manager_count].pkg[KSU_MAX_PACKAGE_NAME - 1] = '\0';
-
-			if (!strcmp(pkg, "com.resukisu.resukisu")) {
-				ksu_managers[ksu_manager_count].version = 35053;
-			} else if (!strcmp(pkg, "com.rifsxd.ksunext")) {
-				ksu_managers[ksu_manager_count].version = 33230;
-			} else if (!strcmp(pkg, "com.kow712.kowsu") || !strcmp(pkg, "com.kowx712.supermanager")) {
-				ksu_managers[ksu_manager_count].version = 32605;
-			} else if (!strcmp(pkg, "me.weishu.kernelsu")) {
-				ksu_managers[ksu_manager_count].version = 32573;
-			} else {
-				ksu_managers[ksu_manager_count].version = KSU_VERSION;
-			}
 		} else {
 			ksu_managers[ksu_manager_count].pkg[0] = '\0';
-			ksu_managers[ksu_manager_count].version = KSU_VERSION;
 		}
+		ksu_managers[ksu_manager_count].version = KSU_VERSION;
 		ksu_manager_count++;
 	}
 }
